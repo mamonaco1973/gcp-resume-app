@@ -20,7 +20,7 @@ CREDENTIALS="${SCRIPT_DIR}/credentials.json"
 echo "NOTE: Running environment validation..."
 "${SCRIPT_DIR}/check_env.sh"
 
-PROJECT_ID=$(jq -r '.project_id' "${CREDENTIALS}")
+export PROJECT_ID=$(jq -r '.project_id' "${CREDENTIALS}")
 
 # ================================================================================
 # Phase 1 — Backend (GCS, Pub/Sub, IAM, Identity Platform key)
