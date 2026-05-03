@@ -79,8 +79,8 @@ envsubst < js/config.js.tmpl > js/config.js
 # ================================================================================
 
 echo "NOTE: Uploading site files to gs://${WEBAPP_BUCKET}..."
-gcloud storage cp -r . "gs://${WEBAPP_BUCKET}/" \
-  --exclude="*.tmpl" --quiet
+gcloud storage cp -r . "gs://${WEBAPP_BUCKET}/" --quiet
+gcloud storage rm "gs://${WEBAPP_BUCKET}/js/config.js.tmpl" --quiet 2>/dev/null || true
 
 # ================================================================================
 # Post-Deploy Validation
