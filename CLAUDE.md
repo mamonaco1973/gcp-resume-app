@@ -5,91 +5,95 @@ with code in this repository.
 
 ## What This App Does
 
-AWS-based Resume Scoring Application. Users upload resumes and submit
-job postings (URL or raw text); the app uses AWS Bedrock (Claude Sonnet)
-to score resume-to-job compatibility (0--100) asynchronously.
+GCP-based Resume Scoring Application. Users upload resumes and submit
+job postings (URL, raw text, or LinkedIn job IDs); the app uses Vertex
+AI Gemini to score resume-to-job compatibility (0--100) asynchronously.
 
 ## Deployment Commands
 
 All deployment runs from the repo root:
 
 ``` bash
-./apply.sh      # Full deploy: installs Python deps, runs Terraform, uploads frontend to S3
-./destroy.sh    # Tear down entire stack
-./check_env.sh  # Validate required tools: aws, terraform, jq
-./validate.sh   # Post-deploy validation (partially implemented)
+./apply.sh      # Full deploy: pip deps, Terraform 3-phase, uploads SPA to GCS
+./destroy.sh    # Tear down entire stack (empties buckets, deletes Firestore docs)
+./check_env.sh  # Validate tools, credentials.json, Vertex AI connectivity
+./validate.sh   # Post-deploy: print gateway and webapp URLs
 ```
 
-Python dependencies are installed into the Lambda source directory
-directly:
+Python dependencies are installed into each Cloud Function source
+directory directly:
 
 ``` bash
-cd 01-core/code && pip install -r requirements.txt -t .
+pip install -r 02-functions/code/api/requirements.txt    -t 02-functions/code/api/
+pip install -r 02-functions/code/worker/requirements.txt -t 02-functions/code/worker/
 ```
 
 There are no test or lint commands configured.
 
 ## Architecture
 
-    01-core/           # Backend: Terraform IaC + Python Lambda source
-      code/            # Lambda functions (Python)
-      *.tf             # Terraform files
-    02-webapp/         # Frontend: vanilla JS SPA, deployed to S3
-      js/config.js.tmpl  # Config template populated by apply.sh at deploy time
+    01-backend/        # Terraform: SAs, IAM, GCS media bucket, Pub/Sub, Identity Platform key
+    02-functions/      # Terraform: Cloud Functions 2nd Gen, API Gateway; Python source
+      code/api/        # HTTP Cloud Function — resume + job CRUD
+      code/worker/     # Eventarc/Pub/Sub Cloud Function — Gemini scoring pipeline
+      openapi.yaml.tpl # API Gateway Swagger spec template
+    03-webapp/         # Terraform: public GCS website bucket
+      site/            # Vanilla JS SPA
+        js/config.js.tmpl  # Config template populated by apply.sh at deploy time
 
 ### Request Flow
 
-**Resume upload:** POST /resumes → API Lambda → S3 (text) + DynamoDB
-(metadata)
+**Resume CRUD:** POST/GET/PUT/DELETE /resumes → API Gateway (JWT) →
+resume-api CF2 → Firestore (metadata) + GCS (text content)
 
 **Job scoring:**
 
-1.  POST /jobs → API Lambda → copies resume snapshot to S3, sends SQS
-    message → returns job with `submitted` status
-2.  Worker Lambda (SQS trigger) → fetches URL if needed → Bedrock for
-    field extraction → Bedrock for score → saves analysis to S3 →
-    updates DynamoDB with score and `Scored` status
-3.  Frontend polls GET /jobs periodically to show updated scores
+1.  POST /jobs → API Gateway → resume-api CF2 → copies resume snapshot
+    to GCS, publishes to Pub/Sub → returns job with `submitted` status
+2.  resume-worker CF2 (Eventarc Pub/Sub trigger) → fetches URL if
+    needed + strips HTML → Gemini 2-phase (extract metadata → score) →
+    writes job_analysis.txt to GCS → updates Firestore with `Scored`
+    status, score, job_title, company
+3.  Frontend polls GET /jobs (5 s auto-refresh) to show updated scores
 
-### Lambda Functions
+### Cloud Functions
 
--   **`code/handler.py`** --- API Lambda entry point; routes to
-    `jobs.py` or `resumes.py`
--   **`code/worker.py`** --- Worker Lambda; SQS-triggered scoring
-    pipeline using Bedrock
--   **`code/jobs.py`** --- Job CRUD logic
--   **`code/resumes.py`** --- Resume CRUD logic
+-   **`code/api/main.py`** --- HTTP function; routes all CRUD by method
+    + path segments; extracts owner from `X-Apigateway-Api-Userinfo`
+-   **`code/worker/main.py`** --- Eventarc function; decodes Pub/Sub
+    message; runs Gemini extraction + scoring pipeline
 
-### Data Model (DynamoDB single-table)
+### Data Model (Firestore)
 
--   `pk`: `USER#<user_id>`, `sk`: `RESUME#<id>` or `JOB#<id>`
+Collections: `resume_app_resumes`, `resume_app_jobs`
+Document ID: `{owner_uid}_{resource_id}`
 
-### S3 Layout (backend bucket)
+### GCS Layout (media bucket)
 
-    users/USER#{id}/resumes/RESUME#{id}.txt
-    users/USER#{id}/jobs/JOB#{id}/job_description.txt
-    users/USER#{id}/jobs/JOB#{id}/resume_snapshot.txt
-    users/USER#{id}/jobs/JOB#{id}/job_analysis.txt
-    users/USER#{id}/jobs/JOB#{id}/notes.txt
+    users/{owner}/resumes/{resume_id}.txt
+    users/{owner}/jobs/{job_id}/job_description.txt
+    users/{owner}/jobs/{job_id}/resume_snapshot.txt
+    users/{owner}/jobs/{job_id}/job_analysis.txt
+    users/{owner}/jobs/{job_id}/notes.txt
 
-### Key Terraform Variables (`01-core/variables.tf`)
+### Key Terraform Variables (`02-functions/main.tf`)
 
--   `region` --- default `us-east-1`
--   `bedrock_model_id` --- default
-    `us.anthropic.claude-sonnet-4-5-20250929-v1:0`
--   `frontend_bucket_base_name` / `backend_bucket_base_name`
+-   `media_bucket_name` --- passed from 01-backend output
+-   `gemini_model_id` --- passed from `gemini-config.sh` (default
+    `gemini-2.0-flash-001`)
 
 ### Authentication
 
-Cognito User Pool with hosted UI, OAuth2 authorization code flow. All
-API routes require JWT Bearer token. Tokens stored in `localStorage` on
-the frontend.
+GCP Identity Platform (Firebase Auth) with email/password. In-page
+sign-in modal — no redirect flow. Firebase JS SDK v11.1.0 loaded via
+importmap. API Gateway validates Firebase JWTs via Swagger
+`securityDefinitions` (`x-google-issuer`, `x-google-jwks_uri`).
 
 ### Frontend Config
 
-`02-webapp/js/config.js.tmpl` is a template --- `apply.sh` substitutes
-`API_BASE_URL`, `COGNITO_DOMAIN`, and `COGNITO_CLIENT_ID` at deploy time
-to produce `config.js`. Never edit `config.js` directly.
+`03-webapp/site/js/config.js.tmpl` is a template --- `apply.sh`
+substitutes `FIREBASE_API_KEY`, `PROJECT_ID`, and `API_BASE_URL` at
+deploy time to produce `config.js`. Never edit `config.js` directly.
 
 ## Code Commenting Standards
 

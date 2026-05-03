@@ -1,78 +1,77 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # ================================================================================
-# File: destroy.sh
+# destroy.sh
+# Tears down all GCP infrastructure in reverse-phase order.
 # ================================================================================
-#
-# Purpose:
-#   Tears down the Resume Scoring application stack deployed by apply.sh.
-#
-#   Destroys all backend infrastructure provisioned by Terraform, including:
-#     - Lambda functions, API Gateway, Cognito, DynamoDB, SQS, and S3 buckets.
-#
-# ================================================================================
-# GLOBAL CONFIGURATION
-# ================================================================================
-
-# ------------------------------------------------------------------------------
-# AWS REGION CONFIGURATION
-# ------------------------------------------------------------------------------
-# Sets the default AWS region used by:
-#   - AWS CLI commands
-#   - Terraform providers
-# ------------------------------------------------------------------------------
-export AWS_DEFAULT_REGION="us-east-1"
-
-# ------------------------------------------------------------------------------
-# BEDROCK MODEL CONFIGURATION
-# ------------------------------------------------------------------------------
-# Terraform needs the model ID during destroy to resolve variable references.
-# ------------------------------------------------------------------------------
-source "$(dirname "$0")/bedrock-config.sh"
-
-# ------------------------------------------------------------------------------
-# STRICT SHELL EXECUTION MODE
-# ------------------------------------------------------------------------------
-# Enforces defensive Bash behavior:
-#   -e  Exit immediately on command failure
-#   -u  Treat unset variables as errors
-#   -o pipefail  Fail pipelines if any command fails
-# ------------------------------------------------------------------------------
+source "$(dirname "$0")/gemini-config.sh"
 set -euo pipefail
 
-# ================================================================================
-# CORE INFRASTRUCTURE TEARDOWN
-# ================================================================================
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+CREDENTIALS="${SCRIPT_DIR}/credentials.json"
 
-# ------------------------------------------------------------------------------
-# DESTROY BACKEND SERVICES
-# ------------------------------------------------------------------------------
-# Removes backend infrastructure provisioned by Terraform, including:
-#   - Lambda functions
-#   - API Gateway routes and integrations
-# ------------------------------------------------------------------------------
-echo "NOTE: Destroying Application Core Services..."
-
-cd 01-core || {
-  echo "ERROR: Directory 01-core not found."
-  exit 1
-}
-
-terraform init
-terraform destroy -auto-approve -var="bedrock_model_id=${BEDROCK_MODEL_ID}"
-
-cd .. || exit 1
+PROJECT_ID=$(jq -r '.project_id' "${CREDENTIALS}")
+SA_EMAIL=$(jq -r '.client_email' "${CREDENTIALS}")
 
 # ================================================================================
-# COMPLETION
+# Authenticate
 # ================================================================================
 
-# ------------------------------------------------------------------------------
-# TEARDOWN COMPLETE
-# ------------------------------------------------------------------------------
-# Indicates that all Terraform stacks were destroyed successfully.
-# ------------------------------------------------------------------------------
+gcloud auth activate-service-account --key-file="${CREDENTIALS}" --quiet
+gcloud config set project "${PROJECT_ID}" --quiet
+
+# ================================================================================
+# Phase 3 — Webapp bucket
+# ================================================================================
+
+echo "NOTE: Destroying 03-webapp..."
+cd "${SCRIPT_DIR}/03-webapp"
+terraform init -reconfigure -input=false
+terraform destroy -auto-approve
+
+# ================================================================================
+# Phase 2 — Cloud Functions + API Gateway
+# ================================================================================
+
+echo "NOTE: Destroying 02-functions..."
+cd "${SCRIPT_DIR}/02-functions"
+terraform init -reconfigure -input=false
+terraform destroy -auto-approve \
+  -var="media_bucket_name=placeholder" \
+  -var="gemini_model_id=${GEMINI_MODEL_ID}"
+
+# ================================================================================
+# Phase 1 — Backend (GCS, Pub/Sub, IAM, Identity Platform)
+# ================================================================================
+
+echo "NOTE: Emptying media bucket before destroy..."
+MEDIA_BUCKET=$(cd "${SCRIPT_DIR}/01-backend" && terraform output -raw media_bucket_name 2>/dev/null || echo "")
+if [ -n "${MEDIA_BUCKET}" ]; then
+  gcloud storage rm -r "gs://${MEDIA_BUCKET}/**" --quiet 2>/dev/null || true
+fi
+
+# Delete Firestore documents from both collections
+echo "NOTE: Deleting Firestore documents..."
+for COLLECTION in resume_app_jobs resume_app_resumes; do
+  PAGE_TOKEN=""
+  while true; do
+    RESPONSE=$(curl -s -X GET \
+      "https://firestore.googleapis.com/v1/projects/${PROJECT_ID}/databases/(default)/documents/${COLLECTION}?pageSize=100&pageToken=${PAGE_TOKEN}" \
+      -H "Authorization: Bearer $(gcloud auth print-access-token --quiet)")
+
+    echo "${RESPONSE}" | jq -r '.documents[]?.name // empty' | while read -r DOC_NAME; do
+      curl -s -X DELETE \
+        "https://firestore.googleapis.com/v1/${DOC_NAME}" \
+        -H "Authorization: Bearer $(gcloud auth print-access-token --quiet)" > /dev/null
+    done
+
+    PAGE_TOKEN=$(echo "${RESPONSE}" | jq -r '.nextPageToken // empty')
+    [ -z "${PAGE_TOKEN}" ] && break
+  done
+done
+
+echo "NOTE: Destroying 01-backend..."
+cd "${SCRIPT_DIR}/01-backend"
+terraform init -reconfigure -input=false
+terraform destroy -auto-approve
+
 echo "NOTE: Infrastructure teardown complete."
-
-# ================================================================================
-# END OF SCRIPT
-# ================================================================================

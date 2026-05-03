@@ -1,26 +1,24 @@
-#!/bin/bash
-# ==============================================================================
+#!/usr/bin/env bash
+# ================================================================================
 # validate.sh
-# ==============================================================================
-# Prints the app URL, API endpoint, and Cognito config after apply.sh completes.
-# ==============================================================================
-
-export AWS_DEFAULT_REGION="us-east-1"
+# Post-deploy summary: prints the API Gateway URL and the webapp GCS URL.
+# ================================================================================
 set -euo pipefail
 
-APP_URL=$(terraform -chdir=01-core output -raw frontend_website_url 2>/dev/null || true)
-API_BASE=$(terraform -chdir=01-core output -raw api_endpoint          2>/dev/null || true)
-COGNITO_UI=$(terraform -chdir=01-core output -raw cognito_hosted_ui_base 2>/dev/null || true)
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-if [ -z "${APP_URL}" ] || [ -z "${API_BASE}" ]; then
-  echo "ERROR: Could not read Terraform outputs. Run ./apply.sh first."
-  exit 1
-fi
+# ================================================================================
+# Read Terraform Outputs
+# ================================================================================
+
+GATEWAY_URL=$(cd "${SCRIPT_DIR}/02-functions" && terraform output -raw gateway_url 2>/dev/null || echo "")
+WEBAPP_URL=$(cd "${SCRIPT_DIR}/03-webapp" && terraform output -raw webapp_url 2>/dev/null || echo "")
 
 echo ""
-echo "================================================================================="
+echo "==================================================================================="
 echo "  Resume Scorer — Deployment validated!"
-echo "================================================================================="
-echo "  App : ${APP_URL}/index.html"
-echo "================================================================================="
+echo "==================================================================================="
+echo "  App : ${WEBAPP_URL}"
+echo "  API : ${GATEWAY_URL}"
+echo "==================================================================================="
 echo ""
