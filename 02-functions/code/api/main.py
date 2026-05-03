@@ -113,7 +113,7 @@ def _handle_create_resume(owner, body):
     if not name or not content:
         return _response(400, {"error": "name and resume are required"})
 
-    resume_id = f"RESUME#{uuid.uuid4().hex[:12]}"
+    resume_id = f"RESUME-{uuid.uuid4().hex[:12]}"
     gcs_key   = f"users/{owner}/resumes/{resume_id}.txt"
     now       = _now()
 
@@ -233,7 +233,7 @@ def _handle_create_job(owner, body):
     resume_data = resume_doc.to_dict()
     resume_name = resume_data.get("name", "")
 
-    job_id = f"JOB#{uuid.uuid4().hex[:12]}"
+    job_id = f"JOB-{uuid.uuid4().hex[:12]}"
     now    = _now()
 
     # Save a snapshot of the resume at submission time for the worker
