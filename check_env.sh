@@ -62,17 +62,23 @@ echo "NOTE: Running api_setup.sh (enables APIs, Firestore, Identity Platform)...
 "${SCRIPT_DIR}/api_setup.sh"
 
 # ================================================================================
-# Vertex AI API Check
+# Vertex AI Model Check
 # ================================================================================
 
-GEMINI_MODEL_ID="${GEMINI_MODEL_ID:-gemini-2.0-flash-001}"
-echo "NOTE: Checking Vertex AI API is enabled for model ${GEMINI_MODEL_ID}..."
+GEMINI_MODEL_ID="${GEMINI_MODEL_ID:-gemini-2.5-flash}"
+echo "NOTE: Testing Vertex AI model ${GEMINI_MODEL_ID}..."
 
-if gcloud services list --enabled --project="${PROJECT_ID}" --quiet \
-    | grep -q "aiplatform.googleapis.com"; then
-  echo "NOTE: Vertex AI API is enabled."
+ACCESS_TOKEN=$(gcloud auth print-access-token --quiet)
+HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" -X POST \
+  "https://aiplatform.googleapis.com/v1/projects/${PROJECT_ID}/locations/global/publishers/google/models/${GEMINI_MODEL_ID}:generateContent" \
+  -H "Authorization: Bearer ${ACCESS_TOKEN}" \
+  -H "Content-Type: application/json" \
+  -d '{"contents":[{"role":"user","parts":[{"text":"Say OK"}]}]}')
+
+if [ "${HTTP_CODE}" = "200" ]; then
+  echo "NOTE: Vertex AI model ${GEMINI_MODEL_ID} accessible."
 else
-  echo "ERROR: Vertex AI API (aiplatform.googleapis.com) is not enabled."
-  echo "       Run api_setup.sh or enable it manually in the GCP console."
+  echo "ERROR: Vertex AI model ${GEMINI_MODEL_ID} not accessible (HTTP ${HTTP_CODE})."
+  echo "       Ensure the model is enabled in Model Garden and the SA has aiplatform.user."
   exit 1
 fi

@@ -31,7 +31,7 @@ logger = logging.getLogger(__name__)
 PROJECT_ID      = os.environ["GOOGLE_CLOUD_PROJECT"]
 MEDIA_BUCKET    = os.environ["MEDIA_BUCKET_NAME"]
 GEMINI_MODEL_ID = os.environ["GEMINI_MODEL_ID"]
-REGION          = "us-central1"
+REGION          = "global"
 
 vertexai.init(project=PROJECT_ID, location=REGION)
 model  = GenerativeModel(GEMINI_MODEL_ID)
