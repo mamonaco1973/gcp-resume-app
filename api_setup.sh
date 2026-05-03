@@ -87,13 +87,15 @@ gcloud firestore indexes composite create \
   --collection-group="resume_app_jobs" \
   --field-config "field-path=owner,order=ascending" \
   --field-config "field-path=created_at,order=descending" \
-  --project="${PROJECT_ID}" || true
+  --async \
+  --project="${PROJECT_ID}" 2>/dev/null || true
 
 # Index on resume_app_resumes for list-by-owner queries (newest first)
 gcloud firestore indexes composite create \
   --collection-group="resume_app_resumes" \
   --field-config "field-path=owner,order=ascending" \
   --field-config "field-path=created_at,order=descending" \
-  --project="${PROJECT_ID}" || true
+  --async \
+  --project="${PROJECT_ID}" 2>/dev/null || true
 
 echo "NOTE: Firestore indexes created (may take a few minutes to build)."
