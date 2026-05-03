@@ -18,7 +18,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   // Redirect unauthenticated visitors rather than letting the API return 401
   const user = await waitForUser();
   if (!user) {
-    window.location.href = `${window.location.origin}/index.html`;
+    window.location.href = "index.html";
     return;
   }
 

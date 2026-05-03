@@ -149,7 +149,7 @@ function bindOpenHandlers() {
     if (button.dataset.bound === "true") return;
     button.addEventListener("click", () => {
       const jobId = button.dataset.jobId;
-      if (jobId) window.open(`/job.html?id=${encodeURIComponent(jobId)}`, jobId);
+      if (jobId) window.open(`job.html?id=${encodeURIComponent(jobId)}`, jobId);
     });
     button.dataset.bound = "true";
   });

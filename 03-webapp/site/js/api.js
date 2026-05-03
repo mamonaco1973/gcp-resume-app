@@ -32,7 +32,7 @@ async function apiRequest(path, options = {}) {
 
   // Firebase auto-refreshes tokens, so 401 means the session has expired
   if (response.status === 401) {
-    window.location.href = `${window.location.origin}/index.html`;
+    window.location.href = "index.html";
     return;
   }
 
