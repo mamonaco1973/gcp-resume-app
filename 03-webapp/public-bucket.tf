@@ -9,8 +9,7 @@ resource "google_storage_bucket" "webapp" {
   location      = "US"
   force_destroy = true
 
-  # Uniform access disabled to allow public object-level ACLs for website mode
-  uniform_bucket_level_access = false
+  uniform_bucket_level_access = true
 
   website {
     main_page_suffix = "index.html"
