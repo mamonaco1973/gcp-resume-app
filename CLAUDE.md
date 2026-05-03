@@ -95,6 +95,19 @@ importmap. API Gateway validates Firebase JWTs via Swagger
 substitutes `FIREBASE_API_KEY`, `PROJECT_ID`, and `API_BASE_URL` at
 deploy time to produce `config.js`. Never edit `config.js` directly.
 
+## Changing the Gemini Model
+
+Edit the single `export` line in `gemini-config.sh`:
+
+```bash
+export GEMINI_MODEL_ID="gemini-2.0-flash-001"
+```
+
+This flows to `check_env.sh` (pre-flight probe), the worker CF2
+`GEMINI_MODEL_ID` env var via Terraform, and `code/worker/main.py` at
+runtime. If the new model has a different response schema, also update
+the prompt strings in `02-functions/code/worker/main.py`.
+
 ## Code Commenting Standards
 
 Claude should apply consistent, professional commenting when modifying
