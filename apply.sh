@@ -43,8 +43,8 @@ cd "${SCRIPT_DIR}/02-functions"
 
 # Install Python dependencies into each function source directory so they are
 # packaged into the ZIP and deployed to Cloud Functions.
-pip install -r code/api/requirements.txt    -t code/api/    -q --upgrade
-pip install -r code/worker/requirements.txt -t code/worker/ -q --upgrade
+pip install -r code/api/requirements.txt    -t code/api/    -q --upgrade --no-deps
+pip install -r code/worker/requirements.txt -t code/worker/ -q --upgrade --no-deps
 
 terraform init -reconfigure -input=false
 terraform apply -auto-approve \
