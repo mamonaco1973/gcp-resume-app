@@ -24,7 +24,7 @@ import functions_framework
 import vertexai
 from bs4 import BeautifulSoup
 from google.cloud import firestore, storage
-from vertexai.generative_models import GenerationConfig, GenerativeModel, ThinkingConfig
+from vertexai.generative_models import GenerativeModel
 
 logger = logging.getLogger(__name__)
 
@@ -34,12 +34,7 @@ GEMINI_MODEL_ID = os.environ["GEMINI_MODEL_ID"]
 REGION          = "global"
 
 vertexai.init(project=PROJECT_ID, location=REGION)
-model = GenerativeModel(
-    GEMINI_MODEL_ID,
-    generation_config=GenerationConfig(
-        thinking_config=ThinkingConfig(thinking_budget=0)
-    ),
-)
+model = GenerativeModel(GEMINI_MODEL_ID)
 db     = firestore.Client(project=PROJECT_ID)
 gcs    = storage.Client(project=PROJECT_ID)
 bucket = gcs.bucket(MEDIA_BUCKET)
