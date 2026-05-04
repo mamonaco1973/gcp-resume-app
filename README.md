@@ -59,7 +59,7 @@ requires only editing one export line in `gemini-config.sh`.
 
 ## Architecture
 
-![diagram](aws-resume-app.png)
+![diagram](gcp-resume-app.png)
 
 ## Prerequisites
 
@@ -68,22 +68,7 @@ requires only editing one export line in `gemini-config.sh`.
 * [Install Terraform](https://developer.hashicorp.com/terraform/install)
 * [Install Python 3.11+](https://www.python.org/downloads/)
 * [Install jq](https://jqlang.github.io/jq/download/)
-* A **service account key file** (`credentials.json`) in the repo root with
-  Owner or the following roles:
-  - `roles/iam.serviceAccountAdmin`
-  - `roles/iam.serviceAccountKeyAdmin`
-  - `roles/resourcemanager.projectIamAdmin`
-  - `roles/storage.admin`
-  - `roles/datastore.owner`
-  - `roles/pubsub.admin`
-  - `roles/cloudfunctions.admin`
-  - `roles/apigateway.admin`
-  - `roles/identitytoolkit.admin`
-  - `roles/aiplatform.admin`
-  - `roles/serviceusage.serviceUsageAdmin`
-  - `roles/apikeys.admin`
-
-`credentials.json` is listed in `.gitignore` and must never be committed.
+* A **service account key file** (`credentials.json`) in the repo root 
 
 If this is your first time using GCP with Terraform, we recommend reviewing
 the [gcloud quickstart](https://cloud.google.com/sdk/docs/quickstart) and
