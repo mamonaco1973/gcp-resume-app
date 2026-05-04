@@ -18,6 +18,7 @@ import base64
 import json
 import logging
 import os
+import time
 import urllib.request
 
 import functions_framework
@@ -111,8 +112,17 @@ def _fetch_url(url):
 
 
 def _call_gemini(prompt):
-    """Call Gemini and return the stripped text response."""
-    return model.generate_content(prompt).text.strip()
+    """Call Gemini with exponential backoff retry on 429 rate limit errors."""
+    for attempt in range(4):
+        try:
+            return model.generate_content(prompt).text.strip()
+        except Exception as exc:
+            if "429" in str(exc) and attempt < 3:
+                wait = 10 * (2 ** attempt)
+                logger.warning("Gemini rate limited, retrying in %ss...", wait)
+                time.sleep(wait)
+            else:
+                raise
 
 
 def _parse_json(raw):
