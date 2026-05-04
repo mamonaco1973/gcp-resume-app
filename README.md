@@ -46,7 +46,7 @@ requires only editing one export line in `gemini-config.sh`.
 3. **Native GCP Authentication** – Identity Platform (Firebase Auth) issues and
    manages JWTs, eliminating the need for custom authentication logic in Cloud
    Functions. API Gateway validates tokens via OpenAPI `securityDefinitions`.
-4. **Serverless Event-Driven Architecture** – No VMs, containers, or VPC
+    4. **Serverless Event-Driven Architecture** – No VMs, containers, or VPC
    networking required. Cloud Functions scale on demand and cost nothing at idle.
 5. **Infrastructure as Code (IaC)** – Terraform provisions all resources —
    API Gateway, Cloud Functions, Firestore, Pub/Sub, GCS, IAM, and Vertex AI
