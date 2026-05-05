@@ -1,4 +1,4 @@
-# GCP Serverless Resume Scoring Application with Vertex AI, Cloud Functions, Firestore, Pub/Sub, and API Gateway
+# GCP Serverless Resume Scoring Application
 
 This project delivers a fully automated **serverless resume scoring application**
 on GCP, built using **GCP API Gateway**, **Cloud Functions 2nd Gen**,
