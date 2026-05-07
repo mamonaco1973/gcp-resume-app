@@ -18,7 +18,7 @@ In this project, we build an AI-powered dashboard to upload your resume, track a
 
 [ B Roll ]
 
-Follow along and build a complete serverless AI app on AWS using Bedrock, Lambda, and SQS.
+Follow along and build a complete serverless AI app on Google Cloud using Cloud Functions, Vertex, and Pub Sub.
 
 ---
 
@@ -78,7 +78,7 @@ The application refreshes and displays the completed results.
 
 [ Show Buckets ]
 
-Two S3 buckets are created for this project.
+Several storage buckets are created for this project.
 
 [ Web Bucket ]
 
@@ -90,29 +90,29 @@ The second stores résumé  and scoring results.
 
 [ Show Identity ]
 
-Authentication is handled by Cognito and enforced by API Gateway.
+Authentication is handled by Google's Identity platform and applied on the API Gateway.
 
 [Show Lambda Functions] 
 
-The API is implemented with Python Lambda functions.
+The API is implemented with Cloud Functions.
 
 [ SQS ]
 
-Job scoring is driven by an SQS queue.
+Job scoring is driven by a Pub Sub Topic.
 
 [ Fire Store ]
 
-DynamoDB tracks the state of each scoring job.
+Firestore tracks the state of each scoring job.
 
 [ Show Worker Function ]
 
-When a message is received, the worker Lambda calls Bedrock to extract and score the job.
+When a message is received, the worker Cloud Function calls Vertex to extract and score the job.
 
 [ Show Media Bucket ]
 
-The results are written back to S3.
+The results are written back to the storage bucket.
 
-[ Show DynamoDB completion record]
+[ Show completion record ]
 
 The job status is updated to “scored”.
 
