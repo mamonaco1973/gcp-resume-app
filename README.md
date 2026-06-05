@@ -551,6 +551,53 @@ To manage limits in the Firebase console:
 
 ---
 
+## Enabling Google Sign-In
+
+By default the app uses email and password authentication only. To add a
+**Login with Google** button to the sign-in modal, complete the one-time
+OAuth credential setup below and re-run `apply.sh`.
+
+### Step 1 — Create an OAuth 2.0 Client ID
+
+1. Open [GCP Console → APIs & Services → Credentials](https://console.cloud.google.com/apis/credentials)
+2. Click **Create Credentials → OAuth 2.0 Client ID**
+3. Set **Application type** to **Web application**
+4. Under **Authorized JavaScript origins**, add your webapp URL
+   (printed by `validate.sh`, e.g. `https://storage.googleapis.com`)
+5. Click **Create** — copy the **Client ID** and **Client secret**
+
+> If prompted to configure the OAuth consent screen first, set it to
+> **External**, fill in the required fields, and add your email as a
+> test user.
+
+### Step 2 — Export the credentials and redeploy
+
+Export the credentials from step 1 in your shell, then run `apply.sh`:
+
+```bash
+export GOOGLE_OAUTH_CLIENT_ID="123456789-abc.apps.googleusercontent.com"
+export GOOGLE_OAUTH_CLIENT_SECRET="GOCSPX-..."
+./apply.sh
+```
+
+If the variables are not set, `apply.sh` passes empty strings and Google
+sign-in is simply not provisioned — no error occurs.
+
+Terraform detects that both credentials are set and provisions the
+`google_identity_platform_default_supported_idp_config` resource, enabling
+Google as a sign-in provider in Identity Platform. The **Login with Google**
+button is already present in the frontend — no further code changes are needed.
+
+If the credentials are left empty, `validate.sh` prints a reminder:
+
+```
+WARNING: Google sign-in is not configured.
+To enable it, add your OAuth credentials to google-auth-config.sh
+and re-run apply.sh.
+```
+
+---
+
 ## Changing the Gemini Model
 
 The model is parameterized end-to-end. To retarget, edit the `export` line in
@@ -596,16 +643,20 @@ The full workflow is:
 
 ### 1. Sign In
 
-Click **Sign In** to open the **authentication modal**. On first use, click
-**Create Account**, enter your email address and a password (minimum 6
-characters), and click **Create Account** to register.
+Click **Sign In** to open the **authentication modal**.
 
-After account creation you are signed in automatically and the
-**Job Scoring Dashboard** appears.
+**With Google (if configured):** Click **Login with Google** and complete the
+Google OAuth popup. Existing Google accounts are linked automatically; new
+accounts are created on first sign-in. No email verification step is required.
 
-On subsequent visits, click **Sign In**, enter your credentials, and click
-**Sign In** to authenticate. If you forget your password, click
-**Forgot password?** to receive a reset email from Identity Platform.
+**With email and password:** On first use, click **Sign Up**, enter your email
+address and a password (minimum 6 characters), and click **Create Account** to
+register. A verification email is sent — click the link in the email, then
+return to the app and sign in with your credentials.
+
+On subsequent visits, enter your credentials and click **Sign in**. If you
+forget your password, click **Forgot password** to receive a reset email from
+Identity Platform.
 
 ### 2. Add a Resume
 
