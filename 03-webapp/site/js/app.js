@@ -670,6 +670,7 @@ async function updateTokenUsage() {
     const arc     = document.getElementById("token-ring-arc");
     const label   = document.getElementById("token-usage-label");
     const display = document.getElementById("token-usage-display");
+    const group   = document.getElementById("token-usage");
 
     if (arc) {
       arc.setAttribute("stroke-dasharray", `${leftPct.toFixed(1)} ${usedPct.toFixed(1)}`);
@@ -677,6 +678,9 @@ async function updateTokenUsage() {
     }
     if (label)   label.textContent = `${formatTokenCount(remaining)} / ${formatTokenCount(limit)}`;
     if (display) display.title     = `${used.toLocaleString()} of ${limit.toLocaleString()} tokens used (${usedPct.toFixed(1)}%)`;
+
+    // Reveal only after data is populated — avoids showing an empty ring on load
+    group?.classList.remove("hidden");
   } catch (_) {
     // Non-critical — silently ignore if usage endpoint fails
   }
@@ -699,6 +703,8 @@ function formatTokenCount(n) {
 function updateAuthButtons(loggedIn) {
   document.getElementById("btn-sign-out")?.classList.toggle("hidden", !loggedIn);
   document.getElementById("filter-bar")?.classList.toggle("hidden",   !loggedIn);
+  // Reset token usage so it re-enters hidden state for the next login
+  if (!loggedIn) document.getElementById("token-usage")?.classList.add("hidden");
   for (const id of ["btn-refresh", "btn-new-job", "btn-manage-resumes"]) {
     const el = document.getElementById(id);
     if (!el) continue;

@@ -10,8 +10,9 @@ body {
   color: #222;
 }
 
+/* !important so utility class wins over display set by other classes */
 .hidden {
-  display: none;
+  display: none !important;
 }
 
 /* ================================================================ */
