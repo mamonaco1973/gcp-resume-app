@@ -66,8 +66,7 @@ document.addEventListener("DOMContentLoaded", () => {
       }
     } else {
       showNotLoggedInMessage();
-      // Always land on Sign In mode, regardless of how the user was logged out
-      if (authMode !== "signin") toggleAuthMode();
+      resetToSignIn();
       showAuthModal();
     }
   });
@@ -328,6 +327,24 @@ function hideAuthModal() {
   modal?.classList.add("hidden");
   document.getElementById("auth-error")?.classList.add("hidden");
   document.getElementById("auth-form")?.reset();
+}
+
+/* -------------------------------------------------------------------------- */
+/* Function: resetToSignIn                                                     */
+/* Purpose: Unconditionally force the auth modal to Sign In state.            */
+/* -------------------------------------------------------------------------- */
+function resetToSignIn() {
+  authMode = "signin";
+  const submit      = document.getElementById("btn-auth-submit");
+  const toggle      = document.getElementById("btn-auth-toggle");
+  const toggleLabel = document.getElementById("auth-toggle-label");
+  const forgot      = document.getElementById("btn-forgot-password");
+  if (submit)      submit.textContent      = "Sign in";
+  if (toggle)      toggle.textContent      = "Sign Up";
+  if (toggleLabel) toggleLabel.textContent = "Don't have an account?";
+  if (forgot)      forgot.classList.remove("hidden");
+  document.getElementById("auth-error")?.classList.add("hidden");
+  document.getElementById("auth-success")?.classList.add("hidden");
 }
 
 /* -------------------------------------------------------------------------- */
