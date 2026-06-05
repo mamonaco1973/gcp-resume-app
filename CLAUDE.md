@@ -8,6 +8,11 @@ with code in this repository.
 GCP-based Resume Scoring Application. Users upload resumes and submit
 job postings (URL, raw text, or LinkedIn job IDs); the app uses Vertex
 AI Gemini to score resume-to-job compatibility (0--100) asynchronously.
+Scored jobs support file attachments (PDFs, docs, images, etc.) stored
+in GCS and managed through the job detail page; the dashboard shows a
+paperclip dropdown for quick download. Token usage (Gemini inference
+tokens) is tracked per user in Firestore with a configurable lifetime
+cap enforced at submission time.
 
 ## Deployment Commands
 
@@ -59,14 +64,23 @@ resume-api CF2 → Firestore (metadata) + GCS (text content)
 ### Cloud Functions
 
 -   **`code/api/main.py`** --- HTTP function; routes all CRUD by method
-    + path segments; extracts owner from `X-Apigateway-Api-Userinfo`
+    + path segments; extracts owner from `X-Apigateway-Api-Userinfo`;
+    handles resume, job, folder, usage, and attachment endpoints
 -   **`code/worker/main.py`** --- Eventarc function; decodes Pub/Sub
     message; runs Gemini extraction + scoring pipeline
 
 ### Data Model (Firestore)
 
-Collections: `resume_app_resumes`, `resume_app_jobs`
-Document ID: `{owner_uid}_{resource_id}`
+Collections: `resume_app_resumes`, `resume_app_jobs`,
+`resume_app_folders`, `resume_app_users`
+Document ID: `{owner_uid}_{resource_id}` (users: `{owner_uid}` only)
+
+Job documents carry an `attachments` array field — each element is a
+dict with `attachment_id`, `filename`, `content_type`, `size`, and
+`uploaded_at`. The list-jobs handler includes `attachment_count` so
+the dashboard knows which rows to show the paperclip icon without a
+second fetch. Delete uses read-modify-write (not `ArrayRemove`) to
+avoid dict equality fragility.
 
 ### GCS Layout (media bucket)
 
@@ -75,6 +89,11 @@ Document ID: `{owner_uid}_{resource_id}`
     users/{owner}/jobs/{job_id}/resume_snapshot.txt
     users/{owner}/jobs/{job_id}/job_analysis.txt
     users/{owner}/jobs/{job_id}/notes.txt
+    users/{owner}/jobs/{job_id}/attachments/{att_id}/{filename}
+
+Attachments are transferred as base64 JSON (10 MB hard limit per file)
+— no signed URLs or multipart; avoids IAM and API Gateway content-type
+complications.
 
 ### Key Terraform Variables (`02-functions/main.tf`)
 

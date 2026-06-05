@@ -223,6 +223,10 @@ function renderAttachmentList(attachments, jobId) {
   const el = document.getElementById("attachment-list");
   if (!el) return;
 
+  // Grey out the upload button when the cap is reached
+  const uploadBtn = document.getElementById("btn-upload-attachment");
+  if (uploadBtn) uploadBtn.disabled = attachments.length >= 5;
+
   if (!attachments.length) {
     el.innerHTML = `<p class="attachment-empty">No attachments yet.</p>`;
     return;
@@ -279,16 +283,29 @@ function bindUploadHandler(jobId) {
     if (statusEl) { statusEl.textContent = ""; statusEl.classList.add("hidden"); }
     if (errorEl)  { errorEl.textContent  = ""; errorEl.classList.add("hidden"); }
 
+    // Count existing attachments to enforce the 5-file cap client-side
+    const existing = document.querySelectorAll(".attachment-item").length;
+    const slots    = 5 - existing;
+    if (slots <= 0) {
+      if (errorEl) {
+        errorEl.textContent = "Attachment limit reached (5 max).";
+        errorEl.classList.remove("hidden");
+      }
+      return;
+    }
+    const toUpload = files.slice(0, slots);
+
     btn.disabled    = true;
     btn.textContent = "Uploading…";
 
     try {
-      for (const file of files) {
+      for (const file of toUpload) {
         const b64 = await fileToBase64(file);
         await uploadAttachment(jobId, file.name, file.type || "application/octet-stream", b64);
       }
       if (statusEl) {
-        statusEl.textContent = `${files.length} file${files.length === 1 ? "" : "s"} uploaded.`;
+        const n = toUpload.length;
+        statusEl.textContent = `${n} file${n === 1 ? "" : "s"} uploaded.`;
         statusEl.classList.remove("hidden");
       }
       await refreshAttachments(jobId);

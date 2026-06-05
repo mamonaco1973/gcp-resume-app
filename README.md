@@ -60,7 +60,13 @@ requires only editing one export line in `gemini-config.sh`.
    per user in Firestore using atomic increments. A configurable per-user
    lifetime cap (default 100,000 tokens) is enforced at job submission. The UI
    displays a live circular ring indicator with remaining tokens.
-8. **Browser-Based Frontend** – A static GCS-hosted SPA demonstrates in-page
+8. **File Attachments** – Each scored job can have arbitrary files attached
+   (correspondence, tailored resumes, cover letters, etc.). Files are stored in
+   GCS and transferred as base64 JSON through the API (10 MB per file limit).
+   The dashboard shows a paperclip icon on rows that have attachments; clicking
+   it opens a dropdown to download any file without leaving the page. Full
+   upload/download/delete management is on the job detail page.
+9. **Browser-Based Frontend** – A static GCS-hosted SPA demonstrates in-page
    Firebase auth, real-time polling for scoring results, job folder
    organization, bulk operations, and polished modal dialogs throughout.
 
@@ -158,9 +164,11 @@ When the deployment completes, the following resources are created:
 
 - **Cloud Functions 2nd Gen:**
   - **`resume-api`** (HTTP, 256 MB, 60 s) — routes all API Gateway requests to
-    resume, job, folder, and token-usage handlers; extracts owner UID from the
-    `X-Apigateway-Api-Userinfo` header injected by API Gateway; enforces the
-    per-user token cap with a `429` response before publishing to Pub/Sub
+    resume, job, folder, token-usage, and attachment handlers; extracts owner
+    UID from the `X-Apigateway-Api-Userinfo` header injected by API Gateway;
+    enforces the per-user token cap with a `429` response before publishing to
+    Pub/Sub; stores and retrieves attachment files in GCS and metadata in the
+    Firestore job document `attachments` array
   - **`resume-worker`** (Eventarc/Pub/Sub, 512 MB, 300 s) — decodes job
     requests, fetches URLs with HTML stripping, calls Gemini for extraction
     and scoring, writes results to GCS, updates Firestore with score and status,
@@ -185,8 +193,10 @@ When the deployment completes, the following resources are created:
 
 - **Cloud Storage:**
   - **Media bucket** (`resume-media-{suffix}`) — stores resume text, job
-    descriptions, resume snapshots, job analyses, and user notes at
-    deterministic per-job paths; private, uniform bucket-level access
+    descriptions, resume snapshots, job analyses, user notes, and job
+    attachments at deterministic per-job paths; private, uniform bucket-level
+    access; attachment paths follow
+    `users/{owner}/jobs/{job_id}/attachments/{att_id}/{filename}`
   - **Website bucket** (`resume-web-{suffix}`) — hosts the static SPA with
     `allUsers` objectViewer and GCS website hosting enabled
 
@@ -210,6 +220,10 @@ When the deployment completes, the following resources are created:
     bar lets users switch between folders or view all jobs
   - **Bulk operations** — select multiple jobs via checkboxes; bulk delete or
     bulk move to a folder from the action bar
+  - **File attachments** — each job can hold arbitrary attachments (PDFs,
+    Word docs, images, etc.); the dashboard shows a paperclip icon on rows
+    with attachments and a click-to-download dropdown; full manage
+    (upload / download / delete) is on the job detail page
   - **Guard dialogs** — attempting to score a job with no resumes on file shows
     a modal alert, then automatically opens the Manage Resumes dialog
   - All confirmations and prompts use styled in-page modal dialogs; no
@@ -248,6 +262,10 @@ API Gateway OpenAPI spec. All requests must include a valid
 | PATCH | `/jobs/{job_id}/notes` | Update user notes on a job |
 | PATCH | `/jobs/{job_id}/folder` | Move a job to a folder |
 | DELETE | `/jobs/{job_id}` | Delete a job and all associated GCS artifacts |
+| GET | `/jobs/{job_id}/attachments` | List attachments for a job |
+| POST | `/jobs/{job_id}/attachments` | Upload a file attachment (base64 JSON, 10 MB max) |
+| GET | `/jobs/{job_id}/attachments/{att_id}` | Download an attachment (base64 JSON response) |
+| DELETE | `/jobs/{job_id}/attachments/{att_id}` | Delete an attachment |
 
 ### Folders
 
@@ -423,6 +441,91 @@ Set `tokens_used` to `0` to reset a user's counter without redeploying.
 
 ---
 
+### POST /jobs/{job_id}/attachments
+
+**Purpose:**
+Upload a file attachment to a scored job. Files are stored in GCS; metadata
+(filename, size, content type, upload timestamp, attachment ID) is appended to
+the `attachments` array on the Firestore job document.
+
+**Request Body (JSON):**
+```json
+{
+  "filename": "cover-letter.pdf",
+  "content_type": "application/pdf",
+  "data": "<base64-encoded file bytes>"
+}
+```
+
+**Parameters:**
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| filename | string | Yes | Original filename (preserved in GCS and response) |
+| content_type | string | Yes | MIME type (e.g. `application/pdf`, `image/png`) |
+| data | string | Yes | Base64-encoded file bytes. 10 MB hard limit |
+
+**Example Response (200):**
+```json
+{
+  "attachment_id": "c3d4e5f6-...",
+  "filename": "cover-letter.pdf"
+}
+```
+
+---
+
+### GET /jobs/{job_id}/attachments
+
+**Purpose:**
+List all attachments for a job. Returns metadata only — no file bytes.
+
+**Example Response (200):**
+```json
+[
+  {
+    "attachment_id": "c3d4e5f6-...",
+    "filename": "cover-letter.pdf",
+    "content_type": "application/pdf",
+    "size": 45312,
+    "uploaded_at": 1742237600000
+  }
+]
+```
+
+---
+
+### GET /jobs/{job_id}/attachments/{att_id}
+
+**Purpose:**
+Download an attachment. Returns the file bytes as base64 JSON.
+
+**Example Response (200):**
+```json
+{
+  "attachment_id": "c3d4e5f6-...",
+  "filename": "cover-letter.pdf",
+  "content_type": "application/pdf",
+  "data": "<base64-encoded file bytes>"
+}
+```
+
+The frontend decodes `data` via `atob()` → `Uint8Array` → `Blob` and triggers
+a browser download using a temporary object URL.
+
+---
+
+### DELETE /jobs/{job_id}/attachments/{att_id}
+
+**Purpose:**
+Delete an attachment. Removes the GCS blob and filters the `attachments` array
+on the Firestore job document using a read-modify-write (not `ArrayRemove`,
+which requires exact dict equality).
+
+**Response:** `200 {}` on success.
+
+---
+
 ## AI Token Tracking
 
 Every Gemini inference call in the worker function captures
@@ -563,13 +666,31 @@ result. The job detail page shows:
   at submission time, so edits to the resume afterwards do not affect past
   scores)
 
-### 6. Add Notes
+### 6. Attach Files
+
+On the job detail page, the **Attachments** accordion (open by default) lets
+you upload arbitrary files to the job — custom resumes, cover letters,
+correspondence, screenshots, and so on.
+
+1. Click **Upload File** and select one or more files (PDFs, Word docs, images,
+   ZIPs, CSVs, and Excel files are accepted; 10 MB per file).
+2. Each file is stored in the GCS media bucket and its metadata (name, size,
+   type, upload time) is saved in the Firestore job document.
+3. Use the **Download** button on any listed file to retrieve it. Use the
+   **Delete** (trash) button to remove it permanently.
+
+From the **Job Scoring Dashboard**, any job row that has at least one
+attachment shows a **paperclip icon** in the rightmost column. Clicking it
+opens a small dropdown listing the filenames — click any filename to download
+it directly without navigating away from the dashboard.
+
+### 7. Add Notes
 
 On the job detail page you can type personal notes (interview prep, recruiter
 contact details, application status, etc.) into the **Notes** field and save
 them. Notes are stored in GCS and are private to your account.
 
-### 7. Organize with Folders
+### 8. Organize with Folders
 
 Use the **New Folder** icon in the filter bar to create named folders
 (e.g. `Applied`, `Interviewing`, `Rejected`). Jobs can be assigned to a folder
@@ -578,7 +699,7 @@ at submission time or moved later via the **bulk move** action. Use the
 Delete a folder with the **Delete Folder** icon — jobs in the folder are
 unassigned but not deleted.
 
-### 8. Bulk Operations
+### 9. Bulk Operations
 
 Check one or more rows in the dashboard to reveal the **bulk action bar**:
 
@@ -586,7 +707,7 @@ Check one or more rows in the dashboard to reveal the **bulk action bar**:
   artifacts
 - **Move to Folder** — reassigns all selected jobs to the chosen folder
 
-### 9. Monitor Token Usage
+### 10. Monitor Token Usage
 
 The **Token Usage** indicator in the filter bar shows how many Gemini tokens
 remain in your lifetime allowance:
@@ -601,7 +722,7 @@ submitted. When the allowance is exhausted, new job submissions are blocked
 until an administrator resets `tokens_used` to `0` in the Firebase console
 (`resume_app_users/{uid}`).
 
-### 10. Delete Jobs
+### 11. Delete Jobs
 
 Select one or more rows and use the bulk delete action, or open a job and
 delete it individually. Deletion is confirmed via a modal dialog and cannot

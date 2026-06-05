@@ -523,6 +523,10 @@ def _handle_upload_attachment(owner, job_id, body):
     if not filename or not data_b64:
         return _response(400, {"error": "filename and data are required"})
 
+    existing = doc.to_dict().get("attachments", [])
+    if len(existing) >= 5:
+        return _response(400, {"error": "attachment limit reached (5 max)"})
+
     try:
         file_bytes = base64.b64decode(data_b64)
     except Exception:

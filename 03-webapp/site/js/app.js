@@ -593,6 +593,7 @@ async function refreshApp() {
     if (refreshButton) refreshButton.disabled = true;
     table?.classList.add("loading");
     await loadJobs();
+    await updateTokenUsage();
   } catch (error) {
     console.error("Failed to refresh dashboard:", error);
     await showAlert(`Failed to refresh jobs: ${error.message}`, { title: "Error" });

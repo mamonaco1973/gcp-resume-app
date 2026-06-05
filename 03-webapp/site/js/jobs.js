@@ -168,13 +168,6 @@ function renderJobsTable() {
   visible.forEach((job) => {
     const row     = document.createElement("tr");
     const checked = selectedJobIds.has(job.job_id) ? "checked" : "";
-    const n       = job.attachment_count || 0;
-    const clipCell = n > 0
-      ? `<td class="attachment-cell">
-           <button class="icon-btn btn-clip" data-job-id="${escapeHtml(job.job_id)}"
-             title="${n} attachment${n === 1 ? "" : "s"}">${ICON_CLIP}</button>
-         </td>`
-      : `<td class="attachment-cell"></td>`;
     row.innerHTML = `
       <td class="checkbox-cell">
         <input type="checkbox" class="job-checkbox"
@@ -185,7 +178,6 @@ function renderJobsTable() {
       <td>${renderStatus(job.status)}</td>
       <td>${formatScore(job.score)}</td>
       <td>${formatDate(job.created_at)}</td>
-      ${clipCell}
     `;
     tbody.appendChild(row);
   });
@@ -198,7 +190,12 @@ function renderJobsTable() {
 function renderJobTitle(job) {
   const title = escapeHtml(job.job_title || "—");
   const href  = `job.html?id=${encodeURIComponent(job.job_id)}`;
-  return `<a href="${href}" target="${escapeHtml(job.job_id)}">${title}</a>`;
+  const n     = job.attachment_count || 0;
+  const clip  = n > 0
+    ? ` <button class="btn-clip" data-job-id="${escapeHtml(job.job_id)}"
+          title="${n} attachment${n === 1 ? "" : "s"}">${ICON_CLIP}</button>`
+    : "";
+  return `<a href="${href}" target="${escapeHtml(job.job_id)}">${title}</a>${clip}`;
 }
 
 function renderCompany(job) {

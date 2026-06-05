@@ -94,6 +94,29 @@
       </details>
 
       <!-- ==================================================================== -->
+      <!-- Attachments -->
+      <!-- ==================================================================== -->
+
+      <details class="accordion-section">
+        <summary>Attachments</summary>
+
+        <div class="accordion-body">
+
+          <div class="attachment-upload-bar">
+            <input type="file" id="attachment-file-input" style="display:none"
+              accept=".pdf,.doc,.docx,.txt,.rtf,.png,.jpg,.jpeg,.gif,.zip,.csv,.xls,.xlsx">
+            <button type="button" id="btn-upload-attachment">Upload File</button>
+            <span id="attachment-upload-status" class="field-success hidden"></span>
+            <span id="attachment-upload-error"  class="field-error  hidden"></span>
+          </div>
+
+          <div id="attachment-list"></div>
+
+        </div>
+
+      </details>
+
+      <!-- ==================================================================== -->
       <!-- Analysis -->
       <!-- ==================================================================== -->
 
@@ -110,7 +133,7 @@
       <!-- Job Description -->
       <!-- ==================================================================== -->
 
-      <details class="accordion-section"  open>
+      <details class="accordion-section" open>
         <summary>Job Description</summary>
 
         <div class="accordion-body">
@@ -128,29 +151,6 @@
 
         <div class="accordion-body">
           <div id="job-resume" class="detail-text-block">—</div>
-        </div>
-
-      </details>
-
-      <!-- ==================================================================== -->
-      <!-- Attachments -->
-      <!-- ==================================================================== -->
-
-      <details class="accordion-section" open>
-        <summary>Attachments</summary>
-
-        <div class="accordion-body">
-
-          <div class="attachment-upload-bar">
-            <input type="file" id="attachment-file-input" style="display:none"
-              accept=".pdf,.doc,.docx,.txt,.rtf,.png,.jpg,.jpeg,.gif,.zip,.csv,.xls,.xlsx">
-            <button type="button" id="btn-upload-attachment">Upload File</button>
-            <span id="attachment-upload-status" class="field-success hidden"></span>
-            <span id="attachment-upload-error"  class="field-error  hidden"></span>
-          </div>
-
-          <div id="attachment-list"></div>
-
         </div>
 
       </details>
