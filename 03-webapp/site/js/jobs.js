@@ -150,6 +150,7 @@ function renderJobsTable() {
     emptyState.innerHTML = jobs.length
       ? "<p>No jobs match the current filters.</p>"
       : "<p>No jobs submitted yet.</p><p>Click <b>Score New Job</b> to begin.</p>";
+    updateBulkActionBar();
     return;
   }
 

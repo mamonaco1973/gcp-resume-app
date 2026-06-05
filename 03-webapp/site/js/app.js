@@ -56,7 +56,6 @@ function bindUiHandlers() {
   const btnNewJob      = document.getElementById("btn-new-job");
   const btnManageResumes = document.getElementById("btn-manage-resumes");
   const cancelNewJob   = document.getElementById("cancel-new-job");
-  const btnSignIn      = document.getElementById("btn-sign-in");
   const btnSignOut     = document.getElementById("btn-sign-out");
   const sourceType     = document.getElementById("source-type");
   const resumeSelect   = document.getElementById("resume-select");
@@ -65,8 +64,6 @@ function bindUiHandlers() {
   // ---------------------------------------------------------------------------
   // Auth modal handlers
   // ---------------------------------------------------------------------------
-
-  btnSignIn?.addEventListener("click", showAuthModal);
 
   btnSignOut?.addEventListener("click", async () => {
     await signOut();
@@ -581,7 +578,6 @@ async function refreshApp() {
 /*          based on the current Firebase auth state.                         */
 /* -------------------------------------------------------------------------- */
 function updateAuthButtons(loggedIn) {
-  document.getElementById("btn-sign-in")?.classList.toggle("hidden",  loggedIn);
   document.getElementById("btn-sign-out")?.classList.toggle("hidden", !loggedIn);
   document.getElementById("filter-bar")?.classList.toggle("hidden",   !loggedIn);
   for (const id of ["btn-refresh", "btn-new-job", "btn-manage-resumes"]) {
