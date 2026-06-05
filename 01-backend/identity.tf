@@ -21,3 +21,18 @@ output "firebase_api_key" {
   value     = google_apikeys_key.webapp_key.key_string
   sensitive = true
 }
+
+# ================================================================================
+# Google Sign-In Provider
+# Only provisioned when both OAuth credentials are supplied.
+# ================================================================================
+
+resource "google_identity_platform_default_supported_idp_config" "google_sign_in" {
+  count    = (var.google_oauth_client_id != "" && var.google_oauth_client_secret != "") ? 1 : 0
+  provider = google-beta
+
+  enabled       = true
+  idp_id        = "google.com"
+  client_id     = var.google_oauth_client_id
+  client_secret = var.google_oauth_client_secret
+}

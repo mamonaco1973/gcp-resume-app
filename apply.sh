@@ -8,6 +8,7 @@
 #   4. Phase 3 — 03-webapp: GCS public bucket + frontend site
 # ================================================================================
 source "$(dirname "$0")/gemini-config.sh"
+source "$(dirname "$0")/google-auth-config.sh"
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -29,7 +30,9 @@ export PROJECT_ID=$(jq -r '.project_id' "${CREDENTIALS}")
 echo "NOTE: Deploying 01-backend..."
 cd "${SCRIPT_DIR}/01-backend"
 terraform init -reconfigure -input=false
-terraform apply -auto-approve
+terraform apply -auto-approve \
+  -var="google_oauth_client_id=${GOOGLE_OAUTH_CLIENT_ID}" \
+  -var="google_oauth_client_secret=${GOOGLE_OAUTH_CLIENT_SECRET}"
 
 export MEDIA_BUCKET=$(terraform output -raw media_bucket_name)
 export FIREBASE_API_KEY=$(terraform output -json firebase_api_key | jq -r '.')

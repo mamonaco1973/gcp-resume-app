@@ -7,6 +7,8 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
+source "${SCRIPT_DIR}/google-auth-config.sh"
+
 # ================================================================================
 # Read Terraform Outputs
 # ================================================================================
@@ -20,4 +22,11 @@ echo "  Resume Scorer — Deployment validated!"
 echo "==================================================================================="
 echo "  App : ${WEBAPP_URL}"
 echo "==================================================================================="
-echo ""
+
+if [ -z "${GOOGLE_OAUTH_CLIENT_ID}" ] || [ -z "${GOOGLE_OAUTH_CLIENT_SECRET}" ]; then
+  echo ""
+  echo "  WARNING: Google sign-in is not configured."
+  echo "  To enable it, add your OAuth credentials to google-auth-config.sh"
+  echo "  and re-run apply.sh."
+  echo ""
+fi
