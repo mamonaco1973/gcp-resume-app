@@ -137,18 +137,18 @@ main {
 /* Bulk action bar */
 /* ================================================================ */
 
-.bulk-action-bar {
+/* display:flex only when .hidden is absent — avoids overriding .hidden */
+.bulk-action-bar:not(.hidden) {
   display: flex;
+}
+
+.bulk-action-bar {
   align-items: center;
   gap: 12px;
   padding: 10px 24px;
   background: #eef4ff;
   border-bottom: 1px solid #c5d8ff;
   flex-wrap: wrap;
-}
-
-.bulk-action-bar:not(.hidden) {
-  display: flex;
 }
 
 #bulk-count {
@@ -178,37 +178,20 @@ main {
   height: 34px;
 }
 
+
 /* ================================================================ */
-/* Move inline picker */
+/* Icon-only buttons                                                 */
 /* ================================================================ */
 
-.move-inline {
+/* Square button sized to the filter-bar control height (34 px). */
+/* The button base styles (bg, hover, disabled) still apply.     */
+.icon-btn {
+  padding: 0;
+  width: 34px;
+  height: 34px;
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-}
-
-.move-folder-select {
-  font-size: 13px;
-  padding: 4px 6px;
-  border: 1px solid #ccc;
-  border-radius: 4px;
-  max-width: 160px;
-}
-
-.move-cancel-btn {
-  background: #888;
-  color: white;
-  border: none;
-  border-radius: 4px;
-  padding: 4px 7px;
-  cursor: pointer;
-  font-size: 12px;
-  line-height: 1;
-}
-
-.move-cancel-btn:hover {
-  background: #666;
+  justify-content: center;
 }
 
 /* ================================================================ */
@@ -242,32 +225,14 @@ tr:hover {
   background: #f9fbfd;
 }
 
-.row-actions {
-  display: flex;
-  gap: 8px;
-}
-
-.row-actions a {
-  text-decoration: none;
+/* Inline links in the jobs table body */
+#jobs-body a {
   color: #2d6cdf;
+  text-decoration: none;
 }
 
-.row-actions .open-job-btn {
-  background: #2d6cdf;
-  color: white;
-}
-
-.row-actions .open-job-btn:hover {
-  background: #1f4fb2;
-}
-
-.row-actions .delete-job-btn {
-  background: #d64545;
-  color: white;
-}
-
-.row-actions .delete-job-btn:hover {
-  background: #b33434;
+#jobs-body a:hover {
+  text-decoration: underline;
 }
 
 /* ================================================================ */

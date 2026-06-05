@@ -6,6 +6,10 @@
 
 import { deleteJob, listJobs, moveJobToFolder } from "./api.js";
 
+// SVG icon strings — used by bulk-bar innerHTML resets
+const ICON_TRASH  = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>`;
+const ICON_ARROW  = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>`;
+
 let jobs = [];
 let currentSort = {
   field:     "created_at",
@@ -160,29 +164,30 @@ function renderJobsTable() {
         <input type="checkbox" class="job-checkbox"
           data-job-id="${escapeHtml(job.job_id)}" ${checked}>
       </td>
-      <td>${escapeHtml(job.job_title || "—")}</td>
-      <td>${escapeHtml(job.company  || "—")}</td>
+      <td>${renderJobTitle(job)}</td>
+      <td>${renderCompany(job)}</td>
       <td>${renderStatus(job.status)}</td>
       <td>${formatScore(job.score)}</td>
       <td>${formatDate(job.created_at)}</td>
-      <td class="row-actions">
-        <button type="button" class="open-job-btn"
-          data-job-id="${escapeHtml(job.job_id)}">Open</button>
-        <button type="button" class="move-job-btn"
-          data-job-id="${escapeHtml(job.job_id)}"
-          data-folder-id="${escapeHtml(job.folder_id || "")}">Move</button>
-        <button type="button" class="delete-job-btn"
-          data-job-id="${escapeHtml(job.job_id)}">Delete</button>
-      </td>
     `;
     tbody.appendChild(row);
   });
 
-  bindOpenHandlers();
-  bindMoveHandlers();
-  bindDeleteHandlers();
   bindCheckboxHandlers(visible);
   updateBulkActionBar();
+}
+
+function renderJobTitle(job) {
+  const title = escapeHtml(job.job_title || "—");
+  const href  = `job.html?id=${encodeURIComponent(job.job_id)}`;
+  return `<a href="${href}" target="${escapeHtml(job.job_id)}">${title}</a>`;
+}
+
+function renderCompany(job) {
+  const name = escapeHtml(job.company || "—");
+  if (!job.job_url) return name;
+  const href = escapeHtml(job.job_url);
+  return `<a href="${href}" target="${escapeHtml(job.job_id)}" rel="noopener noreferrer">${name}</a>`;
 }
 
 function renderStatus(status) {
@@ -199,123 +204,6 @@ function formatDate(value) {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return value;
   return date.toLocaleDateString();
-}
-
-// -----------------------------------------------------------------------------
-// Open actions
-// -----------------------------------------------------------------------------
-
-function bindOpenHandlers() {
-  document.querySelectorAll(".open-job-btn").forEach((button) => {
-    if (button.dataset.bound === "true") return;
-    button.addEventListener("click", () => {
-      const jobId = button.dataset.jobId;
-      if (jobId) window.open(`job.html?id=${encodeURIComponent(jobId)}`, jobId);
-    });
-    button.dataset.bound = "true";
-  });
-}
-
-// -----------------------------------------------------------------------------
-// Move actions
-// -----------------------------------------------------------------------------
-
-/* -------------------------------------------------------------------------- */
-/* Function: bindMoveHandlers                                                  */
-/* Purpose: Wire each Move button to swap itself for an inline folder picker, */
-/*          call the API on change, then restore the button on cancel.        */
-/* -------------------------------------------------------------------------- */
-function bindMoveHandlers() {
-  document.querySelectorAll(".move-job-btn").forEach((button) => {
-    if (button.dataset.bound === "true") return;
-    button.addEventListener("click", () => {
-      const jobId          = button.dataset.jobId;
-      const currentFolder  = button.dataset.folderId || "";
-
-      // Build a temporary inline <select> from the filter bar's folder options
-      const folderSelect  = document.getElementById("folder-select");
-      const inlineSelect  = document.createElement("select");
-      inlineSelect.className = "move-folder-select";
-
-      // "Unassigned" is the first option (value = "")
-      const unassigned = document.createElement("option");
-      unassigned.value       = "";
-      unassigned.textContent = "— Unassigned —";
-      inlineSelect.appendChild(unassigned);
-
-      if (folderSelect) {
-        Array.from(folderSelect.options).forEach((opt) => {
-          if (!opt.value) return; // skip the "All Jobs" option
-          const o = document.createElement("option");
-          o.value       = opt.value;
-          o.textContent = opt.textContent;
-          inlineSelect.appendChild(o);
-        });
-      }
-      inlineSelect.value = currentFolder;
-
-      // Cancel button restores the Move button
-      const cancelBtn = document.createElement("button");
-      cancelBtn.type        = "button";
-      cancelBtn.textContent = "✕";
-      cancelBtn.className   = "move-cancel-btn";
-
-      const wrapper = document.createElement("span");
-      wrapper.className = "move-inline";
-      wrapper.appendChild(inlineSelect);
-      wrapper.appendChild(cancelBtn);
-
-      button.replaceWith(wrapper);
-
-      cancelBtn.addEventListener("click", () => wrapper.replaceWith(button));
-
-      inlineSelect.addEventListener("change", async () => {
-        const newFolderId = inlineSelect.value || null;
-        try {
-          inlineSelect.disabled = true;
-          await moveJobToFolder(jobId, newFolderId);
-          // Update in-memory record so filters reflect the change immediately
-          const job = jobs.find((j) => j.job_id === jobId);
-          if (job) job.folder_id = newFolderId || "";
-          renderJobsTable();
-        } catch (error) {
-          window.alert(`Move failed: ${error.message}`);
-          wrapper.replaceWith(button);
-        }
-      });
-    });
-    button.dataset.bound = "true";
-  });
-}
-
-// -----------------------------------------------------------------------------
-// Delete actions
-// -----------------------------------------------------------------------------
-
-function bindDeleteHandlers() {
-  document.querySelectorAll(".delete-job-btn").forEach((button) => {
-    if (button.dataset.bound === "true") return;
-    button.addEventListener("click", async () => {
-      const jobId = button.dataset.jobId;
-      if (!jobId) return;
-      if (!window.confirm("Delete this job and its stored data?")) return;
-
-      const originalText = button.textContent;
-      try {
-        button.disabled    = true;
-        button.textContent = "Deleting...";
-        await deleteJob(jobId);
-        jobs = jobs.filter((job) => job.job_id !== jobId);
-        selectedJobIds.delete(jobId);
-        renderJobsTable();
-      } catch (error) {
-        window.alert(`Delete failed: ${error.message}`);
-        button.disabled    = false;
-        button.textContent = originalText;
-      }
-    });
-    button.dataset.bound = "true";
-  });
 }
 
 // -----------------------------------------------------------------------------
@@ -406,7 +294,7 @@ function bindBulkHandlers() {
     if (!window.confirm(`Delete ${n} job${n === 1 ? "" : "s"} and all stored data?`)) return;
     const btn = document.getElementById("btn-bulk-delete");
     try {
-      if (btn) { btn.disabled = true; btn.textContent = "Deleting..."; }
+      if (btn) { btn.disabled = true; btn.innerHTML = "…"; }
       for (const jobId of ids) {
         await deleteJob(jobId);
         jobs = jobs.filter((j) => j.job_id !== jobId);
@@ -417,7 +305,7 @@ function bindBulkHandlers() {
       window.alert(`Delete failed: ${error.message}`);
       renderJobsTable();
     } finally {
-      if (btn) { btn.disabled = false; btn.textContent = "Delete Selected"; }
+      if (btn) { btn.disabled = false; btn.innerHTML = ICON_TRASH; }
     }
   });
 
@@ -427,7 +315,7 @@ function bindBulkHandlers() {
     if (!ids.length) return;
     const btn = document.getElementById("btn-bulk-move");
     try {
-      if (btn) { btn.disabled = true; btn.textContent = "Moving..."; }
+      if (btn) { btn.disabled = true; btn.innerHTML = "…"; }
       for (const jobId of ids) {
         await moveJobToFolder(jobId, folderId);
         const job = jobs.find((j) => j.job_id === jobId);
@@ -438,7 +326,7 @@ function bindBulkHandlers() {
     } catch (error) {
       window.alert(`Move failed: ${error.message}`);
     } finally {
-      if (btn) { btn.disabled = false; btn.textContent = "Move"; }
+      if (btn) { btn.disabled = false; btn.innerHTML = ICON_ARROW; }
     }
   });
 
