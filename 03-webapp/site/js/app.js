@@ -168,8 +168,13 @@ function bindUiHandlers() {
   document.getElementById("btn-new-folder")?.addEventListener("click", async () => {
     const name = window.prompt("Folder name:");
     if (!name?.trim()) return;
+    const trimmed = name.trim();
+    if (folders.some((f) => f.name.toLowerCase() === trimmed.toLowerCase())) {
+      window.alert(`A folder named "${trimmed}" already exists.`);
+      return;
+    }
     try {
-      await createFolder({ name: name.trim() });
+      await createFolder({ name: trimmed });
       await loadFolders();
     } catch (error) {
       window.alert(`Failed to create folder: ${error.message}`);

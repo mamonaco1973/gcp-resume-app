@@ -89,6 +89,9 @@
     <table id="jobs-table">
       <thead>
         <tr>
+          <th class="checkbox-cell">
+            <input type="checkbox" id="select-all-jobs">
+          </th>
           <th data-sort="job_title">Job Title</th>
           <th data-sort="company">Company</th>
           <th data-sort="status">Status</th>
@@ -103,6 +106,24 @@
       </tbody>
 
     </table>
+
+    <!-- ============================================================ -->
+    <!-- Bulk Action Bar (visible when rows are selected)             -->
+    <!-- ============================================================ -->
+
+    <div id="bulk-action-bar" class="bulk-action-bar hidden">
+      <span id="bulk-count"></span>
+      <button type="button" id="btn-bulk-delete" class="danger">
+        Delete Selected
+      </button>
+      <div class="bulk-move-group">
+        <span>Move to</span>
+        <select id="bulk-folder-select">
+          <option value="">— Unassigned —</option>
+        </select>
+        <button type="button" id="btn-bulk-move">Move</button>
+      </div>
+    </div>
 
     <div id="empty-state" class="hidden">
       <p>No jobs submitted yet.</p>

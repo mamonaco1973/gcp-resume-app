@@ -117,6 +117,68 @@ main {
 }
 
 /* ================================================================ */
+/* Checkbox column */
+/* ================================================================ */
+
+.checkbox-cell {
+  width: 36px;
+  text-align: center;
+  padding: 10px 8px;
+}
+
+.job-checkbox,
+#select-all-jobs {
+  cursor: pointer;
+  width: 15px;
+  height: 15px;
+}
+
+/* ================================================================ */
+/* Bulk action bar */
+/* ================================================================ */
+
+.bulk-action-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 24px;
+  background: #eef4ff;
+  border-bottom: 1px solid #c5d8ff;
+  flex-wrap: wrap;
+}
+
+.bulk-action-bar:not(.hidden) {
+  display: flex;
+}
+
+#bulk-count {
+  font-size: 14px;
+  font-weight: 600;
+  color: #1f4fb2;
+  min-width: 100px;
+}
+
+.bulk-move-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+}
+
+.bulk-move-group span {
+  font-size: 14px;
+  color: #555;
+}
+
+.bulk-move-group select {
+  padding: 6px 8px;
+  font-size: 14px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  height: 34px;
+}
+
+/* ================================================================ */
 /* Move inline picker */
 /* ================================================================ */
 
