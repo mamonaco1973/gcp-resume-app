@@ -261,9 +261,7 @@
 
   <div id="auth-modal" class="modal hidden">
 
-    <div class="modal-content">
-
-      <h2 id="auth-modal-title">Sign In</h2>
+    <div class="modal-content modal-content--sm">
 
       <form id="auth-form">
 
@@ -271,11 +269,15 @@
         <input
           type="email"
           id="auth-email"
+          placeholder="E-mail"
           autocomplete="email"
           required
         >
 
-        <label for="auth-password">Password</label>
+        <div class="auth-password-header">
+          <label for="auth-password">Password</label>
+          <button type="button" id="btn-forgot-password" class="auth-link">Forgot password</button>
+        </div>
         <input
           type="password"
           id="auth-password"
@@ -286,11 +288,12 @@
         <div id="auth-error" class="field-error hidden"></div>
         <div id="auth-success" class="field-success hidden"></div>
 
-        <div class="modal-actions">
-          <button type="submit" id="btn-auth-submit">Sign In</button>
-          <button type="button" id="btn-auth-toggle">Create Account</button>
-          <button type="button" id="btn-forgot-password" style="background:none;color:#2d6cdf;padding:0;font-size:13px;text-decoration:underline;cursor:pointer;margin-left:auto;">Forgot password?</button>
-        </div>
+        <button type="submit" id="btn-auth-submit" class="btn-auth-submit">Sign in</button>
+
+        <p class="auth-toggle-text">
+          <span id="auth-toggle-label">Don't have an account?</span>
+          <button type="button" id="btn-auth-toggle" class="auth-link auth-link--bold">Sign Up</button>
+        </p>
 
       </form>
 

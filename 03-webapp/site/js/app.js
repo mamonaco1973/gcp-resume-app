@@ -335,13 +335,15 @@ function hideAuthModal() {
 function toggleAuthMode() {
   authMode = authMode === "signin" ? "signup" : "signin";
   const isSignUp = authMode === "signup";
-  const title  = document.getElementById("auth-modal-title");
-  const submit = document.getElementById("btn-auth-submit");
-  const toggle = document.getElementById("btn-auth-toggle");
-  const forgot = document.getElementById("btn-forgot-password");
-  if (title)  title.textContent  = isSignUp ? "Create Account" : "Sign In";
-  if (submit) submit.textContent = isSignUp ? "Create Account" : "Sign In";
-  if (toggle) toggle.textContent = isSignUp ? "Sign In Instead" : "Create Account";
+  const submit       = document.getElementById("btn-auth-submit");
+  const toggle       = document.getElementById("btn-auth-toggle");
+  const toggleLabel  = document.getElementById("auth-toggle-label");
+  const forgot       = document.getElementById("btn-forgot-password");
+  if (submit)      submit.textContent      = isSignUp ? "Create Account" : "Sign in";
+  if (toggle)      toggle.textContent      = isSignUp ? "Sign In" : "Sign Up";
+  if (toggleLabel) toggleLabel.textContent = isSignUp
+    ? "Already have an account?"
+    : "Don't have an account?";
   if (forgot) forgot.classList.toggle("hidden", isSignUp);
   document.getElementById("auth-error")?.classList.add("hidden");
   document.getElementById("auth-success")?.classList.add("hidden");
