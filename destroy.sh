@@ -51,7 +51,7 @@ fi
 
 # Delete Firestore documents from both collections
 echo "NOTE: Deleting Firestore documents..."
-for COLLECTION in resume_app_jobs resume_app_resumes; do
+for COLLECTION in resume_app_jobs resume_app_resumes resume_app_folders resume_app_users; do
   PAGE_TOKEN=""
   while true; do
     RESPONSE=$(curl -s -X GET \
