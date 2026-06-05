@@ -27,14 +27,6 @@
     <h1>Job Scoring Dashboard</h1>
 
     <div class="actions">
-      <div id="token-usage" class="token-usage hidden">
-        <svg class="token-ring" viewBox="0 0 36 36" width="30" height="30">
-          <circle class="token-ring-bg"  cx="18" cy="18" r="15.9"/>
-          <circle class="token-ring-arc" cx="18" cy="18" r="15.9"
-            id="token-ring-arc" stroke-dasharray="100 0" stroke-dashoffset="25"/>
-        </svg>
-        <span id="token-usage-label"></span>
-      </div>
       <span id="auto-refresh-indicator" class="hidden">
         <span class="spinner"></span>
         <span id="auto-refresh-text"></span>
@@ -81,6 +73,17 @@
           id="filter-search"
           placeholder="Title or company..."
         >
+      </div>
+    </div>
+    <div class="filter-group token-usage-group" id="token-usage">
+      <label>Token Usage</label>
+      <div class="filter-group-row token-usage-display" id="token-usage-display">
+        <svg class="token-ring" viewBox="0 0 36 36" width="22" height="22">
+          <circle class="token-ring-bg"  cx="18" cy="18" r="15.9"/>
+          <circle class="token-ring-arc" id="token-ring-arc" cx="18" cy="18" r="15.9"
+            stroke-dasharray="100 0" stroke-dashoffset="25"/>
+        </svg>
+        <span id="token-usage-label"></span>
       </div>
     </div>
   </div>

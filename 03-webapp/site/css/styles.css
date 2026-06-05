@@ -567,20 +567,22 @@ tr:hover {
 }
 
 /* ================================================================ */
-/* Token usage indicator                                             */
+/* Token usage indicator (filter bar)                               */
 /* ================================================================ */
 
-/* display:inline-flex only when .hidden is absent */
-.token-usage:not(.hidden) {
-  display: inline-flex;
-  align-items: center;
+.token-usage-display {
+  height: 34px;
   gap: 8px;
-  font-size: 13px;
-  color: #555;
-  margin-right: 6px;
+  cursor: default;
 }
 
-/* Rotate so the arc starts at the top, not the right */
+.token-usage-label {
+  font-size: 13px;
+  color: #444;
+  white-space: nowrap;
+}
+
+/* Rotate so the arc starts from the top */
 .token-ring {
   flex-shrink: 0;
   transform: rotate(-90deg);
@@ -588,19 +590,19 @@ tr:hover {
 
 .token-ring-bg {
   fill: none;
-  stroke: #e6e6e6;
-  stroke-width: 3.5;
+  stroke: #e0e0e0;
+  stroke-width: 4;
 }
 
 .token-ring-arc {
   fill: none;
   stroke: #2d6cdf;
-  stroke-width: 3.5;
+  stroke-width: 4;
   stroke-linecap: round;
   transition: stroke-dasharray 0.4s ease;
 }
 
-/* Turns red when user has consumed ≥ 80 % of their allowance */
+/* Turns red when ≥ 80 % of the token allowance is consumed */
 .token-ring-arc.token-near-limit {
   stroke: #d64545;
 }

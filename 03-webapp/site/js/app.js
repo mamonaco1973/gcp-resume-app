@@ -610,7 +610,7 @@ async function refreshApp() {
 /* -------------------------------------------------------------------------- */
 /* Function: updateTokenUsage                                                  */
 /* Purpose: Fetch usage from the API and refresh the ring + label in the      */
-/*          header. Ring arc represents remaining tokens; turns red at 80 %.  */
+/*          filter bar. Arc shows remaining tokens; turns red at 80% used.   */
 /* -------------------------------------------------------------------------- */
 async function updateTokenUsage() {
   try {
@@ -621,16 +621,16 @@ async function updateTokenUsage() {
     const usedPct   = Math.min(100, (used / limit) * 100);
     const leftPct   = 100 - usedPct;
 
-    const arc   = document.getElementById("token-ring-arc");
-    const label = document.getElementById("token-usage-label");
-    const el    = document.getElementById("token-usage");
+    const arc     = document.getElementById("token-ring-arc");
+    const label   = document.getElementById("token-usage-label");
+    const display = document.getElementById("token-usage-display");
 
     if (arc) {
       arc.setAttribute("stroke-dasharray", `${leftPct.toFixed(1)} ${usedPct.toFixed(1)}`);
       arc.classList.toggle("token-near-limit", usedPct >= 80);
     }
-    if (label) label.textContent = `${formatTokenCount(remaining)} tokens left`;
-    if (el)    el.classList.remove("hidden");
+    if (label)   label.textContent = `${formatTokenCount(remaining)} / ${formatTokenCount(limit)}`;
+    if (display) display.title     = `${used.toLocaleString()} of ${limit.toLocaleString()} tokens used (${usedPct.toFixed(1)}%)`;
   } catch (_) {
     // Non-critical — silently ignore if usage endpoint fails
   }
@@ -653,7 +653,6 @@ function formatTokenCount(n) {
 function updateAuthButtons(loggedIn) {
   document.getElementById("btn-sign-out")?.classList.toggle("hidden", !loggedIn);
   document.getElementById("filter-bar")?.classList.toggle("hidden",   !loggedIn);
-  document.getElementById("token-usage")?.classList.toggle("hidden",  !loggedIn);
   for (const id of ["btn-refresh", "btn-new-job", "btn-manage-resumes"]) {
     const el = document.getElementById(id);
     if (!el) continue;
