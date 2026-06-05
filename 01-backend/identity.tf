@@ -23,6 +23,25 @@ output "firebase_api_key" {
 }
 
 # ================================================================================
+# Identity Platform Config
+# Adds storage.googleapis.com to authorized domains so the GCS-hosted SPA
+# can open Google sign-in popups without an unauthorized-domain error.
+# Default domains (localhost, firebaseapp.com, web.app) are kept explicitly
+# because Terraform replaces the entire list when this resource is managed.
+# ================================================================================
+
+resource "google_identity_platform_config" "default" {
+  provider = google-beta
+
+  authorized_domains = [
+    "localhost",
+    "${local.project_id}.firebaseapp.com",
+    "${local.project_id}.web.app",
+    "storage.googleapis.com",
+  ]
+}
+
+# ================================================================================
 # Google Sign-In Provider
 # Only provisioned when both OAuth credentials are supplied.
 # ================================================================================
