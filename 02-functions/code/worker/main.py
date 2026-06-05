@@ -116,10 +116,16 @@ def _fetch_url(url):
 
 
 def _call_gemini(prompt):
-    """Call Gemini with exponential backoff retry on 429 rate limit errors."""
+    """Call Gemini with exponential backoff retry on 429 rate limit errors.
+
+    Returns:
+        Tuple of (response_text, total_token_count).
+    """
     for attempt in range(4):
         try:
-            return model.generate_content(prompt).text.strip()
+            resp   = model.generate_content(prompt)
+            tokens = getattr(resp.usage_metadata, "total_token_count", 0) or 0
+            return resp.text.strip(), tokens
         except Exception as exc:
             if "429" in str(exc) and attempt < 3:
                 wait = 10 * (2 ** attempt)
@@ -141,6 +147,18 @@ def _parse_json(raw):
 def _update_job(owner, job_id, updates):
     """Update a Firestore job document."""
     db.collection("resume_app_jobs").document(f"{owner}_{job_id}").update(updates)
+
+
+def _increment_tokens(owner, tokens):
+    """Atomically add tokens to the user's lifetime usage counter.
+
+    Uses merge=True so the document is created on first write without
+    overwriting an existing token_limit set by an admin.
+    """
+    db.collection("resume_app_users").document(owner).set(
+        {"tokens_used": firestore.Increment(tokens)},
+        merge=True,
+    )
 
 
 # ================================================================================
@@ -171,9 +189,10 @@ def _process_message(data):
     # ------------------------------------------------------------------------
     # Phase 1: Extract job metadata and clean description
     # ------------------------------------------------------------------------
-    extraction = _parse_json(
-        _call_gemini(_EXTRACTION_PROMPT.format(job_posting=raw_job_text[:20000]))
+    extraction_raw, tokens1 = _call_gemini(
+        _EXTRACTION_PROMPT.format(job_posting=raw_job_text[:20000])
     )
+    extraction = _parse_json(extraction_raw)
     job_title    = extraction.get("job_title", "")
     company_name = extraction.get("company_name", "")
     job_text     = extraction.get("job_text", raw_job_text[:20000])
@@ -186,14 +205,13 @@ def _process_message(data):
     # ------------------------------------------------------------------------
     # Phase 2: Score resume against job
     # ------------------------------------------------------------------------
-    scoring = _parse_json(
-        _call_gemini(_SCORING_PROMPT.format(
-            job_title=job_title,
-            company_name=company_name,
-            job_text=job_text[:10000],
-            resume_text=resume_text[:10000],
-        ))
-    )
+    scoring_raw, tokens2 = _call_gemini(_SCORING_PROMPT.format(
+        job_title=job_title,
+        company_name=company_name,
+        job_text=job_text[:10000],
+        resume_text=resume_text[:10000],
+    ))
+    scoring = _parse_json(scoring_raw)
     score     = int(scoring.get("score", 0))
     strengths = scoring.get("strengths", [])
     weaknesses = scoring.get("weaknesses", [])
@@ -223,7 +241,11 @@ def _process_message(data):
         "company_name": company_name,
         "score":        score,
     })
-    logger.info("Job %s scored: %d/100", job_id, score)
+
+    # Record token consumption for both Gemini phases against the user's cap
+    total_tokens = tokens1 + tokens2
+    _increment_tokens(owner, total_tokens)
+    logger.info("Job %s scored: %d/100 (%d tokens)", job_id, score, total_tokens)
 
 
 # ================================================================================

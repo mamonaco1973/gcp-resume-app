@@ -39,6 +39,9 @@ topic_path = publisher.topic_path(PROJECT_ID, JOBS_TOPIC)
 # 90-day TTL — long enough that scored jobs remain available for reference
 TTL_SECONDS = 90 * 24 * 3600
 
+# Lifetime token cap applied per user — enforced at job submission time
+TOKEN_LIMIT_DEFAULT = 100_000
+
 
 # ================================================================================
 # Helpers
@@ -82,6 +85,36 @@ def _now():
 def _ts_ms(epoch_seconds):
     """Convert epoch seconds to milliseconds for JavaScript Date compatibility."""
     return epoch_seconds * 1000 if epoch_seconds else 0
+
+
+# ================================================================================
+# Token Usage Helpers
+# ================================================================================
+
+def _check_token_limit(owner):
+    """Return True if the user is under their lifetime token cap."""
+    doc = db.collection("resume_app_users").document(owner).get()
+    if not doc.exists:
+        return True
+    d     = doc.to_dict()
+    used  = d.get("tokens_used", 0) or 0
+    limit = d.get("token_limit", TOKEN_LIMIT_DEFAULT)
+    return used < limit
+
+
+def _handle_get_usage(owner):
+    """Return the user's current token usage and limit."""
+    doc = db.collection("resume_app_users").document(owner).get()
+    if not doc.exists:
+        return _response(200, {
+            "tokens_used":  0,
+            "token_limit":  TOKEN_LIMIT_DEFAULT,
+        })
+    d = doc.to_dict()
+    return _response(200, {
+        "tokens_used": d.get("tokens_used", 0) or 0,
+        "token_limit": d.get("token_limit", TOKEN_LIMIT_DEFAULT),
+    })
 
 
 # ================================================================================
@@ -310,6 +343,15 @@ def _handle_create_job(owner, body):
     if source_type == "raw_text" and not raw_text:
         return _response(400, {"error": "job_description required for raw_text source_type"})
 
+    # Reject submission if user has exhausted their lifetime token allowance
+    if not _check_token_limit(owner):
+        return _response(429, {
+            "error": (
+                "Token limit reached. You have used your "
+                f"{TOKEN_LIMIT_DEFAULT:,}-token lifetime allowance."
+            )
+        })
+
     # Verify the resume exists and belongs to this user
     resume_doc = db.collection("resume_app_resumes").document(
         f"{owner}_{resume_id}"
@@ -466,6 +508,11 @@ def resume_api(request):
 
     try:
         body = request.get_json(silent=True) or {}
+
+        # /usage
+        if len(segments) == 1 and segments[0] == "usage":
+            if method == "GET":
+                return _handle_get_usage(owner)
 
         # /folders
         if len(segments) == 1 and segments[0] == "folders":

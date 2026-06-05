@@ -4,7 +4,7 @@
 /* shows the auth modal when signed out, loads the job list when signed in.   */
 /* ========================================================================== */
 
-import { createJob, listResumes,
+import { createJob, listResumes, getUsage,
          listFolders, createFolder, deleteFolder }  from "./api.js";
 import { loadJobs, hasPendingJobs,
          setFolderFilter, setStatusFilter,
@@ -36,6 +36,7 @@ document.addEventListener("DOMContentLoaded", () => {
         restoreFilterState();
         await loadFolders();
         await refreshApp();
+        await updateTokenUsage();
       } catch (error) {
         console.error("Failed to load dashboard:", error);
       }
@@ -113,13 +114,20 @@ function bindUiHandlers() {
     try {
       resumeModal?.classList.add("hidden");
       resetNewJobForm();
-      await populateResumeSelect();
+      const hasResumes = await populateResumeSelect();
+      if (!hasResumes) {
+        await showAlert(
+          "Please define a resume before scoring a job.",
+          { title: "No Resume Found" }
+        );
+        return;
+      }
       populateJobFolderSelect();
       updateSourceFields();
       newJobModal?.classList.remove("hidden");
       updateNewJobFormValidation();
     } catch (error) {
-      window.alert(`Failed to load resumes: ${error.message}`);
+      await showAlert(`Failed to load resumes: ${error.message}`, { title: "Error" });
     }
   });
 
@@ -167,6 +175,7 @@ function bindUiHandlers() {
     newJobModal?.classList.add("hidden");
     resetNewJobForm();
     await refreshApp();
+    await updateTokenUsage();
   });
 
   document.getElementById("btn-refresh")?.addEventListener("click", refreshApp);
@@ -379,11 +388,7 @@ async function populateResumeSelect() {
   const resumes = await listResumes();
   resumeSelect.innerHTML = "";
   if (!Array.isArray(resumes) || resumes.length === 0) {
-    const option = document.createElement("option");
-    option.value = ""; option.textContent = "No resumes available";
-    option.disabled = true; option.selected = true;
-    resumeSelect.appendChild(option);
-    return;
+    return false;
   }
   resumes.forEach((resume) => {
     const option = document.createElement("option");
@@ -394,6 +399,7 @@ async function populateResumeSelect() {
   const hasSaved = resumes.some((r) => r.resume_id === lastSelectedResumeId);
   resumeSelect.value = hasSaved ? lastSelectedResumeId : resumes[0].resume_id;
   if (!hasSaved) lastSelectedResumeId = resumes[0].resume_id;
+  return true;
 }
 
 function populateJobFolderSelect() {
@@ -597,6 +603,44 @@ async function refreshApp() {
 }
 
 /* ================================================================================
+/* Token Usage
+/* ================================================================================ */
+
+/* -------------------------------------------------------------------------- */
+/* Function: updateTokenUsage                                                  */
+/* Purpose: Fetch usage from the API and refresh the ring + label in the      */
+/*          header. Ring arc represents remaining tokens; turns red at 80 %.  */
+/* -------------------------------------------------------------------------- */
+async function updateTokenUsage() {
+  try {
+    const data      = await getUsage();
+    const used      = data.tokens_used || 0;
+    const limit     = data.token_limit || 100_000;
+    const remaining = Math.max(0, limit - used);
+    const usedPct   = Math.min(100, (used / limit) * 100);
+    const leftPct   = 100 - usedPct;
+
+    const arc   = document.getElementById("token-ring-arc");
+    const label = document.getElementById("token-usage-label");
+    const el    = document.getElementById("token-usage");
+
+    if (arc) {
+      arc.setAttribute("stroke-dasharray", `${leftPct.toFixed(1)} ${usedPct.toFixed(1)}`);
+      arc.classList.toggle("token-near-limit", usedPct >= 80);
+    }
+    if (label) label.textContent = `${formatTokenCount(remaining)} tokens left`;
+    if (el)    el.classList.remove("hidden");
+  } catch (_) {
+    // Non-critical — silently ignore if usage endpoint fails
+  }
+}
+
+function formatTokenCount(n) {
+  if (n >= 1000) return `${(n / 1000).toFixed(1)}K`;
+  return String(n);
+}
+
+/* ================================================================================
 /* Auth UI Helpers
 /* ================================================================================ */
 
@@ -608,6 +652,7 @@ async function refreshApp() {
 function updateAuthButtons(loggedIn) {
   document.getElementById("btn-sign-out")?.classList.toggle("hidden", !loggedIn);
   document.getElementById("filter-bar")?.classList.toggle("hidden",   !loggedIn);
+  document.getElementById("token-usage")?.classList.toggle("hidden",  !loggedIn);
   for (const id of ["btn-refresh", "btn-new-job", "btn-manage-resumes"]) {
     const el = document.getElementById(id);
     if (!el) continue;

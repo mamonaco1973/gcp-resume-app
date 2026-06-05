@@ -565,3 +565,42 @@ tr:hover {
   font-size: 0.8rem;
   line-height: 1.5;
 }
+
+/* ================================================================ */
+/* Token usage indicator                                             */
+/* ================================================================ */
+
+/* display:inline-flex only when .hidden is absent */
+.token-usage:not(.hidden) {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: #555;
+  margin-right: 6px;
+}
+
+/* Rotate so the arc starts at the top, not the right */
+.token-ring {
+  flex-shrink: 0;
+  transform: rotate(-90deg);
+}
+
+.token-ring-bg {
+  fill: none;
+  stroke: #e6e6e6;
+  stroke-width: 3.5;
+}
+
+.token-ring-arc {
+  fill: none;
+  stroke: #2d6cdf;
+  stroke-width: 3.5;
+  stroke-linecap: round;
+  transition: stroke-dasharray 0.4s ease;
+}
+
+/* Turns red when user has consumed ≥ 80 % of their allowance */
+.token-ring-arc.token-near-limit {
+  stroke: #d64545;
+}
