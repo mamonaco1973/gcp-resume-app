@@ -394,6 +394,7 @@ def _handle_get_job(owner, job_id):
         "created_at":     _ts_ms(d.get("created_at")),
         "source_type":    d.get("source_type", ""),
         "job_url":        d.get("source_url", ""),
+        "folder_id":      d.get("folder_id") or "",
         "job_analysis":   "",
         "job_description": "",
         "resume_snapshot": "",

@@ -117,6 +117,7 @@ function bindUiHandlers() {
   // ---------------------------------------------------------------------------
 
   sourceType?.addEventListener("change", () => {
+    setCookie("resumeFilter_sourceType", sourceType.value);
     updateSourceFields();
     updateNewJobFormValidation();
   });
@@ -384,7 +385,8 @@ function populateJobFolderSelect() {
 
 function resetNewJobForm() {
   document.getElementById("new-job-form")?.reset();
-  document.getElementById("source-type").value = "url";
+  const savedSourceType = getCookie("resumeFilter_sourceType") || "url";
+  document.getElementById("source-type").value = savedSourceType;
   document.getElementById("job-url").value = "";
   document.getElementById("job-description").value = "";
   document.getElementById("linkedin-job-ids").value = "";

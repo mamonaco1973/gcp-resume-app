@@ -4,8 +4,8 @@
 /* renders all fields, and handles inline notes saving.                        */
 /* ========================================================================== */
 
-import { getJob, updateJobNotes } from "./api.js";
-import { waitForUser }            from "./auth.js";
+import { getJob, updateJobNotes, listFolders } from "./api.js";
+import { waitForUser }                         from "./auth.js";
 
 document.addEventListener("DOMContentLoaded", async () => {
   const jobId = getJobIdFromUrl();
@@ -25,8 +25,8 @@ document.addEventListener("DOMContentLoaded", async () => {
   bindNotesHandler(jobId);
 
   try {
-    const job = await getJob(jobId);
-    renderJob(job);
+    const [job, folders] = await Promise.all([getJob(jobId), listFolders()]);
+    renderJob(job, folders);
   } catch (error) {
     renderError(`Failed to load job: ${error.message}`);
   }
@@ -46,9 +46,11 @@ function getJobIdFromUrl() {
 /* Purpose: Populate every field in the job detail view from the API response */
 /*          object, then reveal the content panel and hide the loading state. */
 /* -------------------------------------------------------------------------- */
-function renderJob(job) {
+function renderJob(job, folders) {
   setText("job-title",          job.job_title      || "—");
   setText("job-company",        job.company        || "—");
+  const folder = folders.find((f) => f.folder_id === job.folder_id);
+  setText("job-folder",         folder?.name       || "—");
   setText("job-status",         job.status         || "—");
   setText("job-status-message", job.status_message || "—");
   setText("job-score",          formatScore(job.score));
