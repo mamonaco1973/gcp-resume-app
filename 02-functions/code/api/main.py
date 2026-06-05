@@ -45,6 +45,9 @@ TOKEN_LIMIT_DEFAULT = 100_000
 # Hard cap on attachment size — documents rarely exceed this
 MAX_ATTACHMENT_BYTES = 10 * 1024 * 1024  # 10 MB
 
+# Maximum number of registered users — enforced at registration time
+USER_CAP = 1_000
+
 
 # ================================================================================
 # Helpers
@@ -88,6 +91,34 @@ def _now():
 def _ts_ms(epoch_seconds):
     """Convert epoch seconds to milliseconds for JavaScript Date compatibility."""
     return epoch_seconds * 1000 if epoch_seconds else 0
+
+
+# ================================================================================
+# User Registration
+# ================================================================================
+
+def _handle_register(owner):
+    """Register a new user, or confirm an existing one.
+
+    Returns 403 user_limit_reached if the user cap has been hit so the
+    frontend can show the waitlist message and sign the user out.
+    """
+    user_ref = db.collection("resume_app_users").document(owner)
+    if user_ref.get().exists:
+        return _response(200, {"status": "ok"})
+
+    # Count before creating — avoids phantom reads under concurrent signups
+    total = db.collection("resume_app_users").count().get()[0][0].value
+    if total >= USER_CAP:
+        return _response(403, {"error": "user_limit_reached"})
+
+    user_ref.set({
+        "owner":       owner,
+        "tokens_used": 0,
+        "token_limit": TOKEN_LIMIT_DEFAULT,
+        "created_at":  _now(),
+    })
+    return _response(200, {"status": "ok"})
 
 
 # ================================================================================
@@ -636,6 +667,11 @@ def resume_api(request):
 
     try:
         body = request.get_json(silent=True) or {}
+
+        # /register
+        if len(segments) == 1 and segments[0] == "register":
+            if method == "POST":
+                return _handle_register(owner)
 
         # /usage
         if len(segments) == 1 and segments[0] == "usage":

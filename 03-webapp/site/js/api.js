@@ -131,6 +131,15 @@ export async function deleteAttachment(jobId, attachmentId) {
 }
 
 // -----------------------------------------------------------------------------
+// Registration API
+// -----------------------------------------------------------------------------
+
+// Throws with message "user_limit_reached" when the user cap is full
+export async function register() {
+  return apiRequest("/register", { method: "POST", body: JSON.stringify({}) });
+}
+
+// -----------------------------------------------------------------------------
 // Usage API
 // -----------------------------------------------------------------------------
 

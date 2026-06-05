@@ -4,7 +4,7 @@
 /* shows the auth modal when signed out, loads the job list when signed in.   */
 /* ========================================================================== */
 
-import { createJob, listResumes, getUsage,
+import { createJob, listResumes, getUsage, register,
          listFolders, createFolder, deleteFolder }  from "./api.js";
 import { loadJobs, hasPendingJobs,
          setFolderFilter, setStatusFilter,
@@ -32,6 +32,20 @@ document.addEventListener("DOMContentLoaded", () => {
     updateAuthButtons(!!user);
     if (user) {
       hideAuthModal();
+      // Verify the user cap before loading the dashboard
+      try {
+        await register();
+      } catch (error) {
+        if (error.message === "user_limit_reached") {
+          await showAlert(
+            "This app has reached its maximum number of free users.\n\n" +
+            "To request access, email mamonaco1973@gmail.com.",
+            { title: "Registration Closed" }
+          );
+          await signOut();
+          return;
+        }
+      }
       try {
         restoreFilterState();
         await loadFolders();

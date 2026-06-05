@@ -24,6 +24,26 @@ x-google-backend:
 
 paths:
 
+  /register:
+    options:
+      operationId: corsRegister
+      parameters: []
+      responses:
+        "204":
+          description: CORS preflight
+    post:
+      operationId: registerUser
+      security:
+        - firebase: []
+      parameters:
+        - in: body
+          name: body
+          schema:
+            type: object
+      responses:
+        "200":
+          description: OK
+
   /usage:
     options:
       operationId: corsUsage
