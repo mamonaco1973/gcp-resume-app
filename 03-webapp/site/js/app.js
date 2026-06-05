@@ -11,7 +11,7 @@ import { loadJobs, hasPendingJobs,
          setSearchFilter }                          from "./jobs.js";
 import { bindResumeHandlers, openResumeManager }    from "./resumes.js";
 import { onAuthChange, signIn, signUp, signOut,
-         sendPasswordReset }                         from "./auth.js";
+         sendPasswordReset, signInWithGoogle }        from "./auth.js";
 import { showAlert, showConfirm, showPrompt }        from "./modal.js";
 
 let lastSelectedResumeId = "";
@@ -104,6 +104,20 @@ function bindUiHandlers() {
   });
 
   document.getElementById("btn-auth-toggle")?.addEventListener("click", toggleAuthMode);
+
+  document.getElementById("btn-google-signin")?.addEventListener("click", async () => {
+    const errorEl = document.getElementById("auth-error");
+    if (errorEl) { errorEl.textContent = ""; errorEl.classList.add("hidden"); }
+    try {
+      await signInWithGoogle();
+      // onAuthChange fires automatically on success
+    } catch (error) {
+      // popup-closed-by-user is not a real error — user just dismissed it
+      if (error.code !== "auth/popup-closed-by-user" && error.code !== "auth/cancelled-popup-request") {
+        if (errorEl) { errorEl.textContent = formatFirebaseError(error); errorEl.classList.remove("hidden"); }
+      }
+    }
+  });
 
   document.getElementById("btn-forgot-password")?.addEventListener("click", async () => {
     const email = document.getElementById("auth-email")?.value.trim() || "";

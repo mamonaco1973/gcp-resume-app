@@ -12,7 +12,9 @@ import {
   createUserWithEmailAndPassword,
   sendEmailVerification,
   sendPasswordResetEmail as fbSendPasswordResetEmail,
-  signOut as fbSignOut
+  signOut as fbSignOut,
+  GoogleAuthProvider,
+  signInWithPopup
 } from "firebase/auth";
 
 import { CONFIG } from "./config.js";
@@ -64,6 +66,11 @@ export async function signOut() {
 
 export async function sendPasswordReset(email) {
   return fbSendPasswordResetEmail(auth, email);
+}
+
+export async function signInWithGoogle() {
+  const provider = new GoogleAuthProvider();
+  return signInWithPopup(auth, provider);
 }
 
 // -----------------------------------------------------------------------------
