@@ -24,6 +24,22 @@ x-google-backend:
 
 paths:
 
+  /usage:
+    options:
+      operationId: corsUsage
+      parameters: []
+      responses:
+        "204":
+          description: CORS preflight
+    get:
+      operationId: getUsage
+      security:
+        - firebase: []
+      parameters: []
+      responses:
+        "200":
+          description: OK
+
   /folders:
     options:
       operationId: corsFolders

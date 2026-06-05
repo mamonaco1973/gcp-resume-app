@@ -39,23 +39,30 @@ requires only editing one export line in `gemini-config.sh`.
 
 1. **AI-Powered Resume Scoring** – Vertex AI Gemini extracts job metadata and
    scores resume-to-job compatibility (0–100) with a written
-   Strengths/Weaknesses analysis.
+   Strengths/Weaknesses analysis. Scoring uses `temperature=0` (greedy
+   decoding) to produce consistent, deterministic scores across repeated
+   submissions of the same resume and job.
 2. **Asynchronous Job Processing** – Pub/Sub decouples job submission from
    scoring. The API returns immediately with a `submitted` status while a
    worker Cloud Function processes the job in the background.
 3. **Native GCP Authentication** – Identity Platform (Firebase Auth) issues and
    manages JWTs, eliminating the need for custom authentication logic in Cloud
    Functions. API Gateway validates tokens via OpenAPI `securityDefinitions`.
-    4. **Serverless Event-Driven Architecture** – No VMs, containers, or VPC
+4. **Serverless Event-Driven Architecture** – No VMs, containers, or VPC
    networking required. Cloud Functions scale on demand and cost nothing at idle.
 5. **Infrastructure as Code (IaC)** – Terraform provisions all resources —
    API Gateway, Cloud Functions, Firestore, Pub/Sub, GCS, IAM, and Vertex AI
    permissions — across three independent phases.
-6. **Firestore Data Model** – Resumes and jobs are stored in separate Firestore
-   collections with `{owner_uid}_{resource_id}` document IDs for per-user
-   data isolation.
-7. **Browser-Based Frontend** – A static GCS-hosted SPA demonstrates in-page
-   Firebase auth and real-time polling for scoring results.
+6. **Firestore Data Model** – Resumes, jobs, folders, and per-user token usage
+   are stored in separate Firestore collections with `{owner_uid}_{resource_id}`
+   document IDs for per-user data isolation.
+7. **AI Token Usage Tracking** – Cumulative Gemini token consumption is tracked
+   per user in Firestore using atomic increments. A configurable per-user
+   lifetime cap (default 100,000 tokens) is enforced at job submission. The UI
+   displays a live circular ring indicator with remaining tokens.
+8. **Browser-Based Frontend** – A static GCS-hosted SPA demonstrates in-page
+   Firebase auth, real-time polling for scoring results, job folder
+   organization, bulk operations, and polished modal dialogs throughout.
 
 ## Architecture
 
@@ -133,7 +140,7 @@ When the deployment completes, the following resources are created:
 
 - **Security, Identity & IAM:**
   - **GCP Identity Platform** (Firebase Auth) providing managed user authentication
-    and JWT issuance with email-based sign-up
+    and JWT issuance with email-based sign-up and password reset
   - API Gateway **Firebase JWT validation** via OpenAPI `securityDefinitions`
     (`x-google-issuer`, `x-google-jwks_uri`, `x-google-audiences`)
   - Dedicated service accounts (`resume-api-sa`, `resume-worker-sa`) scoped to
@@ -141,17 +148,23 @@ When the deployment completes, the following resources are created:
   - `credentials.json` key file kept out of version control via `.gitignore`
 
 - **Cloud Firestore:**
-  - Two collections: `resume_app_resumes` and `resume_app_jobs`
+  - Four collections: `resume_app_resumes`, `resume_app_jobs`,
+    `resume_app_folders`, and `resume_app_users`
   - Document IDs: `{owner_uid}_{resource_id}` for per-user data isolation
+    (except `resume_app_users`, which uses `{owner_uid}` directly)
   - Composite indexes on `owner ASC, created_at DESC` for efficient list queries
+  - `resume_app_users` stores `tokens_used` (atomic Firestore `Increment`) and
+    an optional per-user `token_limit` override; defaults to 100,000 tokens
 
 - **Cloud Functions 2nd Gen:**
   - **`resume-api`** (HTTP, 256 MB, 60 s) — routes all API Gateway requests to
-    resume and job CRUD handlers; extracts owner UID from the
-    `X-Apigateway-Api-Userinfo` header injected by API Gateway
+    resume, job, folder, and token-usage handlers; extracts owner UID from the
+    `X-Apigateway-Api-Userinfo` header injected by API Gateway; enforces the
+    per-user token cap with a `429` response before publishing to Pub/Sub
   - **`resume-worker`** (Eventarc/Pub/Sub, 512 MB, 300 s) — decodes job
     requests, fetches URLs with HTML stripping, calls Gemini for extraction
-    and scoring, writes results to GCS, updates Firestore
+    and scoring, writes results to GCS, updates Firestore with score and status,
+    and atomically increments `tokens_used` in `resume_app_users`
 
 - **Cloud Pub/Sub:**
   - `resume-job-requests` topic receives job scoring requests from `resume-api`
@@ -164,7 +177,11 @@ When the deployment completes, the following resources are created:
     `job_title`, `company_name`, and a cleaned `job_text` (capped at 3000 chars)
   - **Scoring call** — scores the resume against the cleaned job description
     (0–100) with a written analysis covering Overview, Strengths, and Weaknesses
+  - Both calls use `temperature=0` (greedy decoding) for deterministic,
+    reproducible scores
   - Model parameterized via `GEMINI_MODEL_ID` environment variable
+  - Token usage (`usage_metadata.total_token_count`) is captured from every
+    response and written to Firestore via an atomic increment
 
 - **Cloud Storage:**
   - **Media bucket** (`resume-media-{suffix}`) — stores resume text, job
@@ -174,17 +191,31 @@ When the deployment completes, the following resources are created:
     `allUsers` objectViewer and GCS website hosting enabled
 
 - **GCP API Gateway:**
-  - Single gateway routes all `/resumes` and `/jobs` paths to `resume-api` via
-    `x-google-backend` (h2 protocol)
+  - Single gateway routes all `/resumes`, `/jobs`, `/folders`, and `/usage`
+    paths to `resume-api` via `x-google-backend` (h2 protocol)
   - OpenAPI 2.0 spec with Firebase JWT `securityDefinitions`
   - OPTIONS methods left unauthenticated for CORS preflight
 
 - **Static Web Application (GCS):**
   - Vanilla JavaScript SPA with no build step or framework dependencies
   - Firebase JS SDK v11.1.0 loaded via HTML importmap — no npm required
-  - In-page sign-in/sign-up modal; `onAuthStateChanged` drives the entire UI
-  - Polls `GET /jobs` (5 s auto-refresh) to surface scoring results as they complete
-  - `config.js` is generated at deploy time from a template — never edited directly
+  - In-page sign-in/sign-up modal with **Forgot Password** support via Firebase
+    `sendPasswordResetEmail`; `onAuthStateChanged` drives the entire UI
+  - Polls `GET /jobs` (5 s auto-refresh) to surface scoring results as they
+    complete; spinner and countdown shown in the header while jobs are pending
+  - **Token usage ring** in the filter bar shows remaining lifetime tokens as a
+    circular SVG arc with `"X.XK / 100K"` label; turns red at 80% consumed;
+    hover text shows exact counts and percentage
+  - **Folder management** — jobs can be organized into named folders; filter
+    bar lets users switch between folders or view all jobs
+  - **Bulk operations** — select multiple jobs via checkboxes; bulk delete or
+    bulk move to a folder from the action bar
+  - **Guard dialogs** — attempting to score a job with no resumes on file shows
+    a modal alert, then automatically opens the Manage Resumes dialog
+  - All confirmations and prompts use styled in-page modal dialogs; no
+    `window.alert` / `window.confirm` / `window.prompt` calls
+  - `config.js` is generated at deploy time from a template — never edited
+    directly
 
 Together, these resources form a **secure, AI-powered serverless application**
 that demonstrates modern GCP architecture principles — **event-driven,
@@ -211,11 +242,26 @@ API Gateway OpenAPI spec. All requests must include a valid
 
 | Method | Path | Purpose |
 |--------|------|---------|
-| POST | `/jobs` | Submit a job for scoring (URL or raw text) |
+| POST | `/jobs` | Submit a job for scoring (URL, raw text, or LinkedIn ID) |
 | GET | `/jobs` | List all jobs for the authenticated user |
 | GET | `/jobs/{job_id}` | Retrieve a job with score and analysis |
 | PATCH | `/jobs/{job_id}/notes` | Update user notes on a job |
+| PATCH | `/jobs/{job_id}/folder` | Move a job to a folder |
 | DELETE | `/jobs/{job_id}` | Delete a job and all associated GCS artifacts |
+
+### Folders
+
+| Method | Path | Purpose |
+|--------|------|---------|
+| POST | `/folders` | Create a named folder |
+| GET | `/folders` | List all folders for the authenticated user |
+| DELETE | `/folders/{folder_id}` | Delete a folder (jobs remain, unassigned) |
+
+### Usage
+
+| Method | Path | Purpose |
+|--------|------|---------|
+| GET | `/usage` | Return `tokens_used` and `token_limit` for the authenticated user |
 
 ### Request & Response Characteristics
 
@@ -227,6 +273,7 @@ API Gateway OpenAPI spec. All requests must include a valid
 | Content Type | `application/json` |
 | Response Format | JSON |
 | Timestamps | Milliseconds since epoch (compatible with JS `new Date()`) |
+| Token cap exceeded | `429` with `error` message |
 | Error Handling | Standard HTTP status codes |
 
 ---
@@ -280,6 +327,7 @@ curl -s -X POST https://resume-gateway-<hex>.uc.gateway.dev/resumes \
 **Purpose:**
 Submit a job posting for AI scoring against a previously uploaded resume.
 Returns immediately with `submitted` status while scoring runs asynchronously.
+Returns `429` if the user has exhausted their lifetime token allowance.
 
 **Request Body (JSON) — URL source:**
 ```json
@@ -304,9 +352,10 @@ Returns immediately with `submitted` status while scoring runs asynchronously.
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
 | resume_id | string | Yes | ID of the resume to score against |
-| source_type | string | Yes | `url` or `raw_text` |
+| source_type | string | Yes | `url`, `raw_text`, or `linkedin_job_id` |
 | job_url | string | If `url` | URL of the job posting |
 | job_description | string | If `raw_text` | Full job description text |
+| folder_id | string | No | Folder to assign the job to on creation |
 
 **Example Response (200):**
 ```json
@@ -346,10 +395,56 @@ until `status` is `Scored` or `Failed`.
   "job_description": "We are looking for...",
   "resume_snapshot": "John Smith...",
   "notes": "",
+  "folder_id": null,
   "created_at": 1742237400000,
   "updated_at": 1742237535000
 }
 ```
+
+---
+
+### GET /usage
+
+**Purpose:**
+Return the authenticated user's cumulative token consumption and their
+configured limit. Used by the frontend to render the token usage ring.
+
+**Example Response (200):**
+```json
+{
+  "tokens_used": 17432,
+  "token_limit": 100000
+}
+```
+
+The `token_limit` can be raised or reset per user by editing the
+`resume_app_users/{uid}` document directly in the Firebase console.
+Set `tokens_used` to `0` to reset a user's counter without redeploying.
+
+---
+
+## AI Token Tracking
+
+Every Gemini inference call in the worker function captures
+`usage_metadata.total_token_count` from the response and writes it to
+Firestore using an atomic `Increment`, so concurrent jobs never lose counts.
+
+The per-user cap is enforced in the API function before the job is published
+to Pub/Sub. When the limit is reached, `POST /jobs` returns:
+
+```json
+{
+  "error": "Token limit reached. You have used your 100,000-token lifetime allowance."
+}
+```
+
+To manage limits in the Firebase console:
+
+- **Reset a user's counter:** set `tokens_used = 0` in
+  `resume_app_users/{uid}`
+- **Raise a user's limit:** add or set `token_limit` to the desired value in
+  `resume_app_users/{uid}` (e.g. `500000`); omitting the field falls back to
+  the 100,000 default
 
 ---
 
@@ -386,7 +481,9 @@ Tears down all infrastructure provisioned by `apply.sh`. The destroy script:
 1. Runs `terraform destroy` on `03-webapp`
 2. Runs `terraform destroy` on `02-functions`
 3. Empties the GCS media bucket via `gcloud storage rm`
-4. Deletes all Firestore documents from both collections via the REST API
+4. Deletes all Firestore documents from all four collections
+   (`resume_app_jobs`, `resume_app_resumes`, `resume_app_folders`,
+   `resume_app_users`) via the REST API
 5. Runs `terraform destroy` on `01-backend`
 
 ## Using the Application
@@ -404,13 +501,14 @@ After account creation you are signed in automatically and the
 **Job Scoring Dashboard** appears.
 
 On subsequent visits, click **Sign In**, enter your credentials, and click
-**Sign In** to authenticate.
+**Sign In** to authenticate. If you forget your password, click
+**Forgot password?** to receive a reset email from Identity Platform.
 
 ### 2. Add a Resume
 
 Before scoring any jobs you need at least one resume on file.
 
-1. Click **Manage Resumes**.
+1. Click the **Manage Resumes** icon button in the header.
 2. Click **New Resume**, give it a name (e.g. `Software Engineer Resume`), and
    paste the full plain-text content of your resume into the text area.
 3. Click **Create Resume**. The resume is stored in GCS and available
@@ -420,11 +518,16 @@ You can create multiple resumes (e.g. one tailored for backend roles, one for
 management) and choose between them at scoring time. Use the sidebar to switch
 between resumes, edit text, or delete ones you no longer need.
 
+> **Tip:** If you click **Score New Job** before any resume exists, the app
+> shows an alert and automatically opens the Manage Resumes dialog so you can
+> add one without navigating away.
+
 ### 3. Score a Job
 
-1. Click **Score New Job**.
+1. Click the **Score New Job** icon button in the header.
 2. Select the resume you want to score against from the **Resume** dropdown.
-3. Choose a **Source Type**:
+3. Optionally assign the job to a **Folder** to keep your dashboard organized.
+4. Choose a **Source Type**:
 
    | Source Type | When to use |
    |-------------|-------------|
@@ -432,30 +535,33 @@ between resumes, edit text, or delete ones you no longer need.
    | **Paste Job Description** | Paste the raw job description text directly — useful when a URL requires login |
    | **LinkedIn Job IDs** | Enter one or more numeric LinkedIn job IDs (one per line) to batch-submit multiple jobs at once |
 
-4. Click **Submit**. The job is queued immediately and the modal closes.
+5. Click **Submit**. The job is queued immediately and the modal closes.
 
 ### 4. Monitor Scoring Progress
 
 The dashboard shows all submitted jobs. While a job is being processed:
 
 - The **Status** badge for that row shows `submitted` or `Scoring`.
-- A **spinner and countdown** appear in the toolbar — the list refreshes
+- A **spinner and countdown** appear in the header — the list refreshes
   automatically every 5 seconds until all pending jobs reach a terminal state.
-- You can also click **Refresh** at any time to poll immediately.
+- You can also click the **Refresh** icon at any time to poll immediately.
 
 Scoring typically takes **15–60 seconds** depending on Gemini response time
 and whether the job URL requires fetching and HTML parsing.
 
 ### 5. View the Analysis
 
-Once the status changes to **Scored**, click **Open** to view the full result.
-The job detail page shows:
+Once the status changes to **Scored**, click the job row to view the full
+result. The job detail page shows:
 
-- **Score** — a 0–100 compatibility rating
-- **Analysis** — Overview, Strengths, and Weaknesses sections generated by Gemini
+- **Score** — a 0–100 compatibility rating (deterministic; the same resume +
+  job always produces the same score)
+- **Analysis** — Overview, Strengths, and Weaknesses sections generated by
+  Gemini
 - **Job Description** — the cleaned job text used for scoring
 - **Resume Snapshot** — the version of your resume that was scored (captured
-  at submission time, so edits to the resume afterwards do not affect past scores)
+  at submission time, so edits to the resume afterwards do not affect past
+  scores)
 
 ### 6. Add Notes
 
@@ -463,9 +569,41 @@ On the job detail page you can type personal notes (interview prep, recruiter
 contact details, application status, etc.) into the **Notes** field and save
 them. Notes are stored in GCS and are private to your account.
 
-### 7. Delete Jobs
+### 7. Organize with Folders
 
-Click **Delete** on any row in the dashboard to permanently remove the job
-record and all associated GCS artifacts (job description, resume snapshot,
-analysis, and notes). This action is confirmed via a prompt and cannot be
-undone.
+Use the **New Folder** icon in the filter bar to create named folders
+(e.g. `Applied`, `Interviewing`, `Rejected`). Jobs can be assigned to a folder
+at submission time or moved later via the **bulk move** action. Use the
+**Folder** dropdown in the filter bar to view only jobs in a specific folder.
+Delete a folder with the **Delete Folder** icon — jobs in the folder are
+unassigned but not deleted.
+
+### 8. Bulk Operations
+
+Check one or more rows in the dashboard to reveal the **bulk action bar**:
+
+- **Delete Selected** — permanently removes all selected jobs and their GCS
+  artifacts
+- **Move to Folder** — reassigns all selected jobs to the chosen folder
+
+### 9. Monitor Token Usage
+
+The **Token Usage** indicator in the filter bar shows how many Gemini tokens
+remain in your lifetime allowance:
+
+- The **circular ring** depletes as tokens are consumed; the arc turns red when
+  80% of the allowance is used
+- The **label** shows remaining tokens in `K` notation (e.g. `82.5K / 100K`)
+- **Hover** over the indicator for exact counts and percentage used
+
+The indicator updates automatically after login and after each job is
+submitted. When the allowance is exhausted, new job submissions are blocked
+until an administrator resets `tokens_used` to `0` in the Firebase console
+(`resume_app_users/{uid}`).
+
+### 10. Delete Jobs
+
+Select one or more rows and use the bulk delete action, or open a job and
+delete it individually. Deletion is confirmed via a modal dialog and cannot
+be undone — the Firestore record and all associated GCS artifacts (job
+description, resume snapshot, analysis, and notes) are removed permanently.
