@@ -4,8 +4,15 @@
 /* renders all fields, and handles inline notes saving.                        */
 /* ========================================================================== */
 
-import { getJob, updateJobNotes, listFolders } from "./api.js";
+import { getJob, updateJobNotes, listFolders,
+         listAttachments, uploadAttachment,
+         downloadAttachment, deleteAttachment } from "./api.js";
 import { waitForUser }                         from "./auth.js";
+
+// SVG icons used in the attachment list
+const ICON_CLIP     = `<svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>`;
+const ICON_DOWNLOAD = `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>`;
+const ICON_TRASH    = `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>`;
 
 document.addEventListener("DOMContentLoaded", async () => {
   const jobId = getJobIdFromUrl();
@@ -23,10 +30,12 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   bindNotesHandler(jobId);
+  bindUploadHandler(jobId);
 
   try {
     const [job, folders] = await Promise.all([getJob(jobId), listFolders()]);
     renderJob(job, folders);
+    await refreshAttachments(jobId);
   } catch (error) {
     renderError(`Failed to load job: ${error.message}`);
   }
@@ -187,4 +196,159 @@ function formatDate(value) {
   try {
     return new Date(value).toLocaleString();
   } catch { return value; }
+}
+
+// -----------------------------------------------------------------------------
+// Attachments
+// -----------------------------------------------------------------------------
+
+/* -------------------------------------------------------------------------- */
+/* Function: refreshAttachments                                                */
+/* Purpose: Fetch the current attachment list from the API and re-render.     */
+/* -------------------------------------------------------------------------- */
+async function refreshAttachments(jobId) {
+  try {
+    const attachments = await listAttachments(jobId);
+    renderAttachmentList(attachments, jobId);
+  } catch (_) {
+    renderAttachmentList([], jobId);
+  }
+}
+
+/* -------------------------------------------------------------------------- */
+/* Function: renderAttachmentList                                              */
+/* Purpose: Build the attachment list UI with download and delete controls.   */
+/* -------------------------------------------------------------------------- */
+function renderAttachmentList(attachments, jobId) {
+  const el = document.getElementById("attachment-list");
+  if (!el) return;
+
+  if (!attachments.length) {
+    el.innerHTML = `<p class="attachment-empty">No attachments yet.</p>`;
+    return;
+  }
+
+  el.innerHTML = attachments.map((att) => `
+    <div class="attachment-item">
+      ${ICON_CLIP}
+      <span class="attachment-name" title="${escapeHtml(att.filename)}">
+        ${escapeHtml(att.filename)}
+      </span>
+      <span class="attachment-size">${formatBytes(att.size)}</span>
+      <button type="button" class="icon-btn btn-att-download"
+        data-att-id="${escapeHtml(att.attachment_id)}"
+        data-filename="${escapeHtml(att.filename)}"
+        title="Download">${ICON_DOWNLOAD}</button>
+      <button type="button" class="icon-btn danger btn-att-delete"
+        data-att-id="${escapeHtml(att.attachment_id)}"
+        title="Delete">${ICON_TRASH}</button>
+    </div>
+  `).join("");
+
+  el.querySelectorAll(".btn-att-download").forEach((btn) => {
+    btn.addEventListener("click", () =>
+      handleAttachmentDownload(jobId, btn.dataset.attId, btn.dataset.filename)
+    );
+  });
+
+  el.querySelectorAll(".btn-att-delete").forEach((btn) => {
+    btn.addEventListener("click", () =>
+      handleAttachmentDelete(jobId, btn.dataset.attId)
+    );
+  });
+}
+
+/* -------------------------------------------------------------------------- */
+/* Function: bindUploadHandler                                                 */
+/* Purpose: Wire the Upload File button to the hidden file input.             */
+/* -------------------------------------------------------------------------- */
+function bindUploadHandler(jobId) {
+  const btn   = document.getElementById("btn-upload-attachment");
+  const input = document.getElementById("attachment-file-input");
+  if (!btn || !input) return;
+
+  btn.addEventListener("click", () => input.click());
+
+  input.addEventListener("change", async () => {
+    const files = Array.from(input.files || []);
+    if (!files.length) return;
+    input.value = "";
+
+    const statusEl = document.getElementById("attachment-upload-status");
+    const errorEl  = document.getElementById("attachment-upload-error");
+    if (statusEl) { statusEl.textContent = ""; statusEl.classList.add("hidden"); }
+    if (errorEl)  { errorEl.textContent  = ""; errorEl.classList.add("hidden"); }
+
+    btn.disabled    = true;
+    btn.textContent = "Uploading…";
+
+    try {
+      for (const file of files) {
+        const b64 = await fileToBase64(file);
+        await uploadAttachment(jobId, file.name, file.type || "application/octet-stream", b64);
+      }
+      if (statusEl) {
+        statusEl.textContent = `${files.length} file${files.length === 1 ? "" : "s"} uploaded.`;
+        statusEl.classList.remove("hidden");
+      }
+      await refreshAttachments(jobId);
+    } catch (error) {
+      if (errorEl) {
+        errorEl.textContent = `Upload failed: ${error.message}`;
+        errorEl.classList.remove("hidden");
+      }
+    } finally {
+      btn.disabled    = false;
+      btn.textContent = "Upload File";
+    }
+  });
+}
+
+async function handleAttachmentDownload(jobId, attachmentId, filename) {
+  try {
+    const result = await downloadAttachment(jobId, attachmentId);
+    const bytes  = Uint8Array.from(atob(result.data), (c) => c.charCodeAt(0));
+    const blob   = new Blob([bytes], { type: result.content_type });
+    const url    = URL.createObjectURL(blob);
+    const a      = document.createElement("a");
+    a.href     = url;
+    a.download = result.filename || filename;
+    a.click();
+    URL.revokeObjectURL(url);
+  } catch (error) {
+    const errorEl = document.getElementById("attachment-upload-error");
+    if (errorEl) {
+      errorEl.textContent = `Download failed: ${error.message}`;
+      errorEl.classList.remove("hidden");
+    }
+  }
+}
+
+async function handleAttachmentDelete(jobId, attachmentId) {
+  try {
+    await deleteAttachment(jobId, attachmentId);
+    await refreshAttachments(jobId);
+  } catch (error) {
+    const errorEl = document.getElementById("attachment-upload-error");
+    if (errorEl) {
+      errorEl.textContent = `Delete failed: ${error.message}`;
+      errorEl.classList.remove("hidden");
+    }
+  }
+}
+
+function fileToBase64(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload  = () => resolve(reader.result.split(",")[1]);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+function formatBytes(bytes) {
+  if (!bytes) return "";
+  if (bytes < 1024)        return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }

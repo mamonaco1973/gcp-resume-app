@@ -42,6 +42,9 @@ TTL_SECONDS = 90 * 24 * 3600
 # Lifetime token cap applied per user — enforced at job submission time
 TOKEN_LIMIT_DEFAULT = 100_000
 
+# Hard cap on attachment size — documents rarely exceed this
+MAX_ATTACHMENT_BYTES = 10 * 1024 * 1024  # 10 MB
+
 
 # ================================================================================
 # Helpers
@@ -323,7 +326,8 @@ def _handle_list_jobs(owner):
             "score":       d.get("score"),
             "status":      d.get("status", "submitted"),
             "created_at":  _ts_ms(d.get("created_at")),
-            "folder_id":   d.get("folder_id"),
+            "folder_id":        d.get("folder_id"),
+            "attachment_count": len(d.get("attachments", [])),
         }
         for doc in docs
         for d in [doc.to_dict()]
@@ -489,6 +493,126 @@ def _handle_delete_job(owner, job_id):
 
 
 # ================================================================================
+# Attachment Handlers
+# ================================================================================
+
+def _handle_list_attachments(owner, job_id):
+    """Return the attachments array from the job document."""
+    doc = db.collection("resume_app_jobs").document(f"{owner}_{job_id}").get()
+    if not doc.exists:
+        return _response(404, {"error": "not found"})
+    d = doc.to_dict()
+    if d.get("owner") != owner:
+        return _response(403, {"error": "forbidden"})
+    return _response(200, d.get("attachments", []))
+
+
+def _handle_upload_attachment(owner, job_id, body):
+    """Decode a base64 file, write it to GCS, and append metadata to the job."""
+    doc_ref = db.collection("resume_app_jobs").document(f"{owner}_{job_id}")
+    doc     = doc_ref.get()
+    if not doc.exists:
+        return _response(404, {"error": "not found"})
+    if doc.to_dict().get("owner") != owner:
+        return _response(403, {"error": "forbidden"})
+
+    filename     = (body.get("filename")     or "").strip()
+    content_type = (body.get("content_type") or "application/octet-stream").strip()
+    data_b64     = body.get("data")          or ""
+
+    if not filename or not data_b64:
+        return _response(400, {"error": "filename and data are required"})
+
+    try:
+        file_bytes = base64.b64decode(data_b64)
+    except Exception:
+        return _response(400, {"error": "invalid base64 data"})
+
+    if len(file_bytes) > MAX_ATTACHMENT_BYTES:
+        return _response(413, {"error": "file exceeds 10 MB limit"})
+
+    attachment_id = f"ATT-{uuid.uuid4().hex[:12]}"
+    gcs_key = (
+        f"users/{owner}/jobs/{job_id}/attachments/{attachment_id}/{filename}"
+    )
+    bucket.blob(gcs_key).upload_from_string(file_bytes, content_type=content_type)
+
+    attachment = {
+        "attachment_id": attachment_id,
+        "filename":      filename,
+        "content_type":  content_type,
+        "size":          len(file_bytes),
+        "uploaded_at":   _now(),
+    }
+    doc_ref.update({"attachments": firestore.ArrayUnion([attachment])})
+    return _response(200, attachment)
+
+
+def _handle_download_attachment(owner, job_id, attachment_id):
+    """Return file bytes as base64 JSON for the browser to decode and save."""
+    doc = db.collection("resume_app_jobs").document(f"{owner}_{job_id}").get()
+    if not doc.exists:
+        return _response(404, {"error": "not found"})
+    d = doc.to_dict()
+    if d.get("owner") != owner:
+        return _response(403, {"error": "forbidden"})
+
+    attachments = d.get("attachments", [])
+    att = next(
+        (a for a in attachments if a.get("attachment_id") == attachment_id), None
+    )
+    if not att:
+        return _response(404, {"error": "attachment not found"})
+
+    gcs_key = (
+        f"users/{owner}/jobs/{job_id}/attachments"
+        f"/{attachment_id}/{att['filename']}"
+    )
+    try:
+        file_bytes = bucket.blob(gcs_key).download_as_bytes()
+    except Exception:
+        return _response(404, {"error": "file not found in storage"})
+
+    return _response(200, {
+        "filename":     att["filename"],
+        "content_type": att.get("content_type", "application/octet-stream"),
+        "data":         base64.b64encode(file_bytes).decode("utf-8"),
+    })
+
+
+def _handle_delete_attachment(owner, job_id, attachment_id):
+    """Remove the GCS object and pull the entry from the attachments array."""
+    doc_ref = db.collection("resume_app_jobs").document(f"{owner}_{job_id}")
+    doc     = doc_ref.get()
+    if not doc.exists:
+        return _response(404, {"error": "not found"})
+    d = doc.to_dict()
+    if d.get("owner") != owner:
+        return _response(403, {"error": "forbidden"})
+
+    attachments = d.get("attachments", [])
+    att = next(
+        (a for a in attachments if a.get("attachment_id") == attachment_id), None
+    )
+    if not att:
+        return _response(404, {"error": "attachment not found"})
+
+    gcs_key = (
+        f"users/{owner}/jobs/{job_id}/attachments"
+        f"/{attachment_id}/{att['filename']}"
+    )
+    try:
+        bucket.blob(gcs_key).delete()
+    except Exception:
+        pass  # Already gone from GCS; still remove from Firestore
+
+    # Read-modify-write the array — ArrayRemove requires exact dict equality
+    updated = [a for a in attachments if a.get("attachment_id") != attachment_id]
+    doc_ref.update({"attachments": updated})
+    return _response(200, {"deleted": attachment_id})
+
+
+# ================================================================================
 # Entry Point
 # ================================================================================
 
@@ -567,6 +691,22 @@ def resume_api(request):
         if len(segments) == 3 and segments[0] == "jobs" and segments[2] == "folder":
             if method == "PATCH":
                 return _handle_move_job_to_folder(owner, segments[1], body)
+
+        # /jobs/{id}/attachments
+        if len(segments) == 3 and segments[0] == "jobs" and segments[2] == "attachments":
+            jid = segments[1]
+            if method == "GET":
+                return _handle_list_attachments(owner, jid)
+            if method == "POST":
+                return _handle_upload_attachment(owner, jid, body)
+
+        # /jobs/{id}/attachments/{att_id}
+        if len(segments) == 4 and segments[0] == "jobs" and segments[2] == "attachments":
+            jid, att_id = segments[1], segments[3]
+            if method == "GET":
+                return _handle_download_attachment(owner, jid, att_id)
+            if method == "DELETE":
+                return _handle_delete_attachment(owner, jid, att_id)
 
         return _response(404, {"error": "not found"})
 

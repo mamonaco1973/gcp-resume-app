@@ -108,6 +108,29 @@ export async function moveJobToFolder(jobId, folderId) {
 }
 
 // -----------------------------------------------------------------------------
+// Attachments API
+// -----------------------------------------------------------------------------
+
+export async function listAttachments(jobId) {
+  return apiRequest(`/jobs/${jobId}/attachments`, { method: "GET" });
+}
+
+export async function uploadAttachment(jobId, filename, contentType, base64Data) {
+  return apiRequest(`/jobs/${jobId}/attachments`, {
+    method: "POST",
+    body:   JSON.stringify({ filename, content_type: contentType, data: base64Data }),
+  });
+}
+
+export async function downloadAttachment(jobId, attachmentId) {
+  return apiRequest(`/jobs/${jobId}/attachments/${attachmentId}`, { method: "GET" });
+}
+
+export async function deleteAttachment(jobId, attachmentId) {
+  return apiRequest(`/jobs/${jobId}/attachments/${attachmentId}`, { method: "DELETE" });
+}
+
+// -----------------------------------------------------------------------------
 // Usage API
 // -----------------------------------------------------------------------------
 

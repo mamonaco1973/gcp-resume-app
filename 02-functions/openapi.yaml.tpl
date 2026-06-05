@@ -40,6 +40,94 @@ paths:
         "200":
           description: OK
 
+  /jobs/{id}/attachments:
+    options:
+      operationId: corsJobAttachments
+      parameters:
+        - in: path
+          name: id
+          required: true
+          type: string
+      responses:
+        "204":
+          description: CORS preflight
+    get:
+      operationId: listAttachments
+      security:
+        - firebase: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          type: string
+      responses:
+        "200":
+          description: OK
+    post:
+      operationId: uploadAttachment
+      security:
+        - firebase: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          type: string
+        - in: body
+          name: body
+          schema:
+            type: object
+      responses:
+        "200":
+          description: OK
+
+  /jobs/{id}/attachments/{att_id}:
+    options:
+      operationId: corsJobAttachmentById
+      parameters:
+        - in: path
+          name: id
+          required: true
+          type: string
+        - in: path
+          name: att_id
+          required: true
+          type: string
+      responses:
+        "204":
+          description: CORS preflight
+    get:
+      operationId: downloadAttachment
+      security:
+        - firebase: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          type: string
+        - in: path
+          name: att_id
+          required: true
+          type: string
+      responses:
+        "200":
+          description: OK
+    delete:
+      operationId: deleteAttachment
+      security:
+        - firebase: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          type: string
+        - in: path
+          name: att_id
+          required: true
+          type: string
+      responses:
+        "200":
+          description: OK
+
   /folders:
     options:
       operationId: corsFolders
