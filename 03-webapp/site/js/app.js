@@ -120,6 +120,7 @@ function bindUiHandlers() {
           "Please define a resume before scoring a job.",
           { title: "No Resume Found" }
         );
+        await openResumeManager();
         return;
       }
       populateJobFolderSelect();
