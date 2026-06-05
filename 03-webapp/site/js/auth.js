@@ -10,6 +10,7 @@ import {
   onAuthStateChanged,
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
+  sendEmailVerification,
   sendPasswordResetEmail as fbSendPasswordResetEmail,
   signOut as fbSignOut
 } from "firebase/auth";
@@ -51,7 +52,10 @@ export async function signIn(email, password) {
 }
 
 export async function signUp(email, password) {
-  return createUserWithEmailAndPassword(auth, email, password);
+  const cred = await createUserWithEmailAndPassword(auth, email, password);
+  // Send verification email immediately — unverified users are blocked at sign-in
+  await sendEmailVerification(cred.user);
+  return cred;
 }
 
 export async function signOut() {

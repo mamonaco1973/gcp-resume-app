@@ -32,6 +32,16 @@ document.addEventListener("DOMContentLoaded", () => {
     updateAuthButtons(!!user);
     if (user) {
       hideAuthModal();
+      // Block unverified accounts — verification email was sent at sign-up
+      if (!user.emailVerified) {
+        await showAlert(
+          "Please verify your email address before signing in.\n\n" +
+          "Check your inbox for a verification link.",
+          { title: "Email Not Verified" }
+        );
+        await signOut();
+        return;
+      }
       // Verify the user cap before loading the dashboard
       try {
         await register();
