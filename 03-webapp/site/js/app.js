@@ -35,8 +35,8 @@ document.addEventListener("DOMContentLoaded", () => {
       // Block unverified accounts — verification email was sent at sign-up
       if (!user.emailVerified) {
         await showAlert(
-          "Please verify your email address before signing in.\n\n" +
-          "Check your inbox for a verification link.",
+          "Please verify your email before signing in.\n\n" +
+          "Check your inbox for a verification link, then sign in again.",
           { title: "Email Not Verified" }
         );
         await signOut();
@@ -66,6 +66,8 @@ document.addEventListener("DOMContentLoaded", () => {
       }
     } else {
       showNotLoggedInMessage();
+      // Always land on Sign In mode, regardless of how the user was logged out
+      if (authMode !== "signin") toggleAuthMode();
       showAuthModal();
     }
   });
