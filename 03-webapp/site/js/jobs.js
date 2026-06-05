@@ -438,6 +438,7 @@ function positionDropdown(btn, dropdown) {
 }
 
 async function triggerDownload(jobId, attachmentId, filename) {
+  closeDropdown();
   try {
     const result = await downloadAttachment(jobId, attachmentId);
     const bytes  = Uint8Array.from(atob(result.data), (c) => c.charCodeAt(0));
