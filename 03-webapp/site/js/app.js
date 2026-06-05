@@ -10,7 +10,8 @@ import { loadJobs, hasPendingJobs,
          setFolderFilter, setStatusFilter,
          setSearchFilter }                          from "./jobs.js";
 import { bindResumeHandlers, openResumeManager }    from "./resumes.js";
-import { onAuthChange, signIn, signUp, signOut }    from "./auth.js";
+import { onAuthChange, signIn, signUp, signOut,
+         sendPasswordReset }                         from "./auth.js";
 
 let lastSelectedResumeId = "";
 let autoRefreshTimer     = null;
@@ -76,6 +77,24 @@ function bindUiHandlers() {
   });
 
   document.getElementById("btn-auth-toggle")?.addEventListener("click", toggleAuthMode);
+
+  document.getElementById("btn-forgot-password")?.addEventListener("click", async () => {
+    const email = document.getElementById("auth-email")?.value.trim() || "";
+    const errorEl   = document.getElementById("auth-error");
+    const successEl = document.getElementById("auth-success");
+    if (errorEl)   { errorEl.textContent   = ""; errorEl.classList.add("hidden"); }
+    if (successEl) { successEl.textContent = ""; successEl.classList.add("hidden"); }
+    if (!email) {
+      if (errorEl) { errorEl.textContent = "Enter your email address above first."; errorEl.classList.remove("hidden"); }
+      return;
+    }
+    try {
+      await sendPasswordReset(email);
+      if (successEl) { successEl.textContent = `Reset email sent to ${email}.`; successEl.classList.remove("hidden"); }
+    } catch (error) {
+      if (errorEl) { errorEl.textContent = formatFirebaseError(error); errorEl.classList.remove("hidden"); }
+    }
+  });
 
   // ---------------------------------------------------------------------------
   // Track last selected resume across modal open/close cycles
@@ -281,10 +300,13 @@ function toggleAuthMode() {
   const title  = document.getElementById("auth-modal-title");
   const submit = document.getElementById("btn-auth-submit");
   const toggle = document.getElementById("btn-auth-toggle");
+  const forgot = document.getElementById("btn-forgot-password");
   if (title)  title.textContent  = isSignUp ? "Create Account" : "Sign In";
   if (submit) submit.textContent = isSignUp ? "Create Account" : "Sign In";
   if (toggle) toggle.textContent = isSignUp ? "Sign In Instead" : "Create Account";
+  if (forgot) forgot.classList.toggle("hidden", isSignUp);
   document.getElementById("auth-error")?.classList.add("hidden");
+  document.getElementById("auth-success")?.classList.add("hidden");
 }
 
 /* -------------------------------------------------------------------------- */
