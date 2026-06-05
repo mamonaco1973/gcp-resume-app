@@ -190,10 +190,9 @@ def _handle_list_folders(owner):
     docs = (
         db.collection("resume_app_folders")
         .where("owner", "==", owner)
-        .order_by("created_at", direction=firestore.Query.ASCENDING)
         .stream()
     )
-    return _response(200, [
+    folders = [
         {
             "folder_id":  d["folder_id"],
             "name":       d.get("name", ""),
@@ -201,7 +200,10 @@ def _handle_list_folders(owner):
         }
         for doc in docs
         for d in [doc.to_dict()]
-    ])
+    ]
+    # Sort in Python — avoids requiring a composite index on this collection
+    folders.sort(key=lambda f: f["created_at"])
+    return _response(200, folders)
 
 
 def _handle_create_folder(owner, body):
