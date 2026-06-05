@@ -286,6 +286,7 @@ def _handle_list_jobs(owner):
             "resume_name": d.get("resume_name", ""),
             "job_title":   d.get("job_title", ""),
             "company":     d.get("company_name", ""),
+            "job_url":     d.get("source_url", ""),
             "score":       d.get("score"),
             "status":      d.get("status", "submitted"),
             "created_at":  _ts_ms(d.get("created_at")),
