@@ -5,6 +5,7 @@
 /* ========================================================================== */
 
 import { deleteJob, listJobs, moveJobToFolder } from "./api.js";
+import { showAlert, showConfirm }               from "./modal.js";
 
 // SVG icon strings — used by bulk-bar innerHTML resets
 const ICON_TRASH  = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>`;
@@ -292,7 +293,11 @@ function bindBulkHandlers() {
     const ids = [...selectedJobIds];
     if (!ids.length) return;
     const n = ids.length;
-    if (!window.confirm(`Delete ${n} job${n === 1 ? "" : "s"} and all stored data?`)) return;
+    const confirmed = await showConfirm(
+      `Delete ${n} job${n === 1 ? "" : "s"} and all stored data?`,
+      { title: "Delete Jobs", confirmText: "Delete", danger: true }
+    );
+    if (!confirmed) return;
     const btn = document.getElementById("btn-bulk-delete");
     try {
       if (btn) { btn.disabled = true; btn.innerHTML = "…"; }
@@ -303,7 +308,7 @@ function bindBulkHandlers() {
       }
       renderJobsTable();
     } catch (error) {
-      window.alert(`Delete failed: ${error.message}`);
+      await showAlert(`Delete failed: ${error.message}`, { title: "Error" });
       renderJobsTable();
     } finally {
       if (btn) { btn.disabled = false; btn.innerHTML = ICON_TRASH; }
@@ -325,7 +330,7 @@ function bindBulkHandlers() {
       selectedJobIds.clear();
       renderJobsTable();
     } catch (error) {
-      window.alert(`Move failed: ${error.message}`);
+      await showAlert(`Move failed: ${error.message}`, { title: "Error" });
     } finally {
       if (btn) { btn.disabled = false; btn.innerHTML = ICON_ARROW; }
     }

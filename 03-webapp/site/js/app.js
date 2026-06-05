@@ -12,6 +12,7 @@ import { loadJobs, hasPendingJobs,
 import { bindResumeHandlers, openResumeManager }    from "./resumes.js";
 import { onAuthChange, signIn, signUp, signOut,
          sendPasswordReset }                         from "./auth.js";
+import { showAlert, showConfirm, showPrompt }        from "./modal.js";
 
 let lastSelectedResumeId = "";
 let autoRefreshTimer     = null;
@@ -183,18 +184,19 @@ function bindUiHandlers() {
   });
 
   document.getElementById("btn-new-folder")?.addEventListener("click", async () => {
-    const name = window.prompt("Folder name:");
-    if (!name?.trim()) return;
-    const trimmed = name.trim();
-    if (folders.some((f) => f.name.toLowerCase() === trimmed.toLowerCase())) {
-      window.alert(`A folder named "${trimmed}" already exists.`);
+    const name = await showPrompt("Folder name", {
+      title: "New Folder", placeholder: "Enter folder name...", confirmText: "Create",
+    });
+    if (!name) return;
+    if (folders.some((f) => f.name.toLowerCase() === name.toLowerCase())) {
+      await showAlert(`A folder named "${name}" already exists.`, { title: "Duplicate Folder" });
       return;
     }
     try {
-      await createFolder({ name: trimmed });
+      await createFolder({ name });
       await loadFolders();
     } catch (error) {
-      window.alert(`Failed to create folder: ${error.message}`);
+      await showAlert(`Failed to create folder: ${error.message}`, { title: "Error" });
     }
   });
 
@@ -202,9 +204,11 @@ function bindUiHandlers() {
     if (!currentFolderId) return;
     const folder = folders.find((f) => f.folder_id === currentFolderId);
     const label  = folder?.name || currentFolderId;
-    if (!window.confirm(
-      `Delete folder "${label}"? Jobs inside will move to All Jobs.`
-    )) return;
+    const confirmed = await showConfirm(
+      `Delete folder "${label}"? Jobs inside will move to All Jobs.`,
+      { title: "Delete Folder", confirmText: "Delete", danger: true }
+    );
+    if (!confirmed) return;
     try {
       await deleteFolder(currentFolderId);
       currentFolderId = "";
@@ -213,7 +217,7 @@ function bindUiHandlers() {
       await loadFolders();
       await refreshApp();
     } catch (error) {
-      window.alert(`Failed to delete folder: ${error.message}`);
+      await showAlert(`Failed to delete folder: ${error.message}`, { title: "Error" });
     }
   });
 
@@ -584,7 +588,7 @@ async function refreshApp() {
     await loadJobs();
   } catch (error) {
     console.error("Failed to refresh dashboard:", error);
-    window.alert(`Failed to refresh jobs: ${error.message}`);
+    await showAlert(`Failed to refresh jobs: ${error.message}`, { title: "Error" });
   } finally {
     if (refreshButton) refreshButton.disabled = false;
     table?.classList.remove("loading");
