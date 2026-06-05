@@ -319,6 +319,14 @@ def _handle_create_job(owner, body):
     resume_data = resume_doc.to_dict()
     resume_name = resume_data.get("name", "")
 
+    folder_id = (body.get("folder_id") or "").strip() or None
+    if folder_id:
+        folder_doc = db.collection("resume_app_folders").document(
+            f"{owner}_{folder_id}"
+        ).get()
+        if not folder_doc.exists:
+            return _response(404, {"error": "folder not found"})
+
     job_id = f"JOB-{uuid.uuid4().hex[:12]}"
     now    = _now()
 
@@ -345,7 +353,7 @@ def _handle_create_job(owner, body):
         "company_name": "",
         "score":        None,
         "status":       "submitted",
-        "folder_id":    None,
+        "folder_id":    folder_id,
         "created_at":   now,
         "ttl":          now + TTL_SECONDS,
     })

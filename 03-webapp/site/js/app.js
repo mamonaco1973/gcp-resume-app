@@ -31,6 +31,7 @@ document.addEventListener("DOMContentLoaded", () => {
     if (user) {
       hideAuthModal();
       try {
+        restoreFilterState();
         await loadFolders();
         await refreshApp();
       } catch (error) {
@@ -96,6 +97,7 @@ function bindUiHandlers() {
       resumeModal?.classList.add("hidden");
       resetNewJobForm();
       await populateResumeSelect();
+      populateJobFolderSelect();
       updateSourceFields();
       newJobModal?.classList.remove("hidden");
       updateNewJobFormValidation();
@@ -158,6 +160,7 @@ function bindUiHandlers() {
   document.getElementById("folder-select")?.addEventListener("change", (e) => {
     currentFolderId = e.target.value;
     setFolderFilter(currentFolderId);
+    setCookie("resumeFilter_folder", currentFolderId);
     updateDeleteFolderButton();
     refreshApp();
   });
@@ -184,6 +187,7 @@ function bindUiHandlers() {
       await deleteFolder(currentFolderId);
       currentFolderId = "";
       setFolderFilter("");
+      setCookie("resumeFilter_folder", "");
       await loadFolders();
       await refreshApp();
     } catch (error) {
@@ -197,11 +201,13 @@ function bindUiHandlers() {
 
   document.getElementById("filter-status")?.addEventListener("change", (e) => {
     setStatusFilter(e.target.value);
+    setCookie("resumeFilter_status", e.target.value);
     refreshApp();
   });
 
   document.getElementById("filter-search")?.addEventListener("input", (e) => {
     setSearchFilter(e.target.value);
+    setCookie("resumeFilter_search", e.target.value);
     refreshApp();
   });
 }
@@ -234,7 +240,7 @@ async function loadFolders() {
 
   // Restore the current selection if the folder still exists
   const stillValid = folders.some((f) => f.folder_id === currentFolderId);
-  if (!stillValid) currentFolderId = "";
+  if (!stillValid) { currentFolderId = ""; setCookie("resumeFilter_folder", ""); }
   select.value = currentFolderId;
   setFolderFilter(currentFolderId);
   updateDeleteFolderButton();
@@ -361,6 +367,19 @@ async function populateResumeSelect() {
   if (!hasSaved) lastSelectedResumeId = resumes[0].resume_id;
 }
 
+function populateJobFolderSelect() {
+  const select = document.getElementById("new-job-folder-select");
+  if (!select) return;
+  select.innerHTML = `<option value="">No Folder</option>`;
+  folders.forEach((f) => {
+    const opt = document.createElement("option");
+    opt.value       = f.folder_id;
+    opt.textContent = f.name;
+    select.appendChild(opt);
+  });
+  select.value = currentFolderId || "";
+}
+
 function resetNewJobForm() {
   document.getElementById("new-job-form")?.reset();
   document.getElementById("source-type").value = "url";
@@ -455,12 +474,15 @@ function isValidUrl(value) {
 /* ================================================================================ */
 
 async function submitJobScoringRequest() {
-  const resumeId   = document.getElementById("resume-select")?.value.trim() || "";
-  const sourceType = document.getElementById("source-type")?.value          || "url";
+  const resumeId   = document.getElementById("resume-select")?.value.trim()      || "";
+  const sourceType = document.getElementById("source-type")?.value               || "url";
+  const folderId   = document.getElementById("new-job-folder-select")?.value     || null;
+
+  const base = { resume_id: resumeId, ...(folderId ? { folder_id: folderId } : {}) };
 
   if (sourceType === "url") {
     await createJob({
-      resume_id:   resumeId,
+      ...base,
       source_type: "url",
       job_url:     document.getElementById("job-url")?.value.trim() || "",
     });
@@ -469,7 +491,7 @@ async function submitJobScoringRequest() {
 
   if (sourceType === "raw_text") {
     await createJob({
-      resume_id:       resumeId,
+      ...base,
       source_type:     "raw_text",
       job_description: document.getElementById("job-description")?.value.trim() || "",
     });
@@ -481,7 +503,7 @@ async function submitJobScoringRequest() {
       .split("\n").map((id) => id.trim()).filter(Boolean);
     for (const id of ids) {
       await createJob({
-        resume_id:   resumeId,
+        ...base,
         source_type: "url",
         job_url:     `https://www.linkedin.com/jobs/view/${id}`,
       });
@@ -563,6 +585,40 @@ function updateAuthButtons(loggedIn) {
     if (loggedIn) el.removeAttribute("disabled");
     else          el.setAttribute("disabled", "true");
   }
+}
+
+/* ================================================================================
+/* Cookie Helpers
+/* ================================================================================ */
+
+function setCookie(name, value) {
+  const expires = new Date(Date.now() + 30 * 864e5).toUTCString();
+  document.cookie = `${name}=${encodeURIComponent(value)}; expires=${expires}; path=/; SameSite=Lax`;
+}
+
+function getCookie(name) {
+  return document.cookie.split("; ").reduce((found, part) => {
+    const [k, v] = part.split("=");
+    return k === name ? decodeURIComponent(v || "") : found;
+  }, "");
+}
+
+/* -------------------------------------------------------------------------- */
+/* Function: restoreFilterState                                                */
+/* Purpose: Read saved filter cookies and apply them to the filter bar and    */
+/*          in-memory state before the first data load.                       */
+/* -------------------------------------------------------------------------- */
+function restoreFilterState() {
+  const savedFolder = getCookie("resumeFilter_folder");
+  const savedStatus = getCookie("resumeFilter_status");
+  const savedSearch  = getCookie("resumeFilter_search");
+
+  if (savedFolder) currentFolderId = savedFolder;
+
+  const statusEl = document.getElementById("filter-status");
+  const searchEl = document.getElementById("filter-search");
+  if (savedStatus && statusEl) { statusEl.value = savedStatus; setStatusFilter(savedStatus); }
+  if (savedSearch  && searchEl) { searchEl.value = savedSearch;  setSearchFilter(savedSearch);  }
 }
 
 function showNotLoggedInMessage() {
