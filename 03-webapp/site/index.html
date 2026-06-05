@@ -40,6 +40,47 @@
   </header>
 
   <!-- ================================================================ -->
+  <!-- Filter Bar -->
+  <!-- ================================================================ -->
+
+  <div id="filter-bar" class="filter-bar hidden">
+    <div class="filter-group">
+      <label for="folder-select">Folder</label>
+      <div class="filter-group-row">
+        <select id="folder-select">
+          <option value="">All Jobs</option>
+        </select>
+        <button type="button" id="btn-new-folder">+ New Folder</button>
+        <button type="button" id="btn-delete-folder" class="danger hidden">
+          Delete Folder
+        </button>
+      </div>
+    </div>
+    <div class="filter-group">
+      <label for="filter-status">Status</label>
+      <div class="filter-group-row">
+        <select id="filter-status">
+          <option value="">All</option>
+          <option value="submitted">Submitted</option>
+          <option value="Scoring">Scoring</option>
+          <option value="Scored">Scored</option>
+          <option value="Error">Error</option>
+        </select>
+      </div>
+    </div>
+    <div class="filter-group filter-group--search">
+      <label for="filter-search">Search</label>
+      <div class="filter-group-row">
+        <input
+          type="text"
+          id="filter-search"
+          placeholder="Title or company..."
+        >
+      </div>
+    </div>
+  </div>
+
+  <!-- ================================================================ -->
   <!-- Jobs Table -->
   <!-- ================================================================ -->
 

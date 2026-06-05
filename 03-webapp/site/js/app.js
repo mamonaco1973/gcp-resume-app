@@ -4,8 +4,11 @@
 /* shows the auth modal when signed out, loads the job list when signed in.   */
 /* ========================================================================== */
 
-import { createJob, listResumes }                   from "./api.js";
-import { loadJobs, hasPendingJobs }                 from "./jobs.js";
+import { createJob, listResumes,
+         listFolders, createFolder, deleteFolder }  from "./api.js";
+import { loadJobs, hasPendingJobs,
+         setFolderFilter, setStatusFilter,
+         setSearchFilter }                          from "./jobs.js";
 import { bindResumeHandlers, openResumeManager }    from "./resumes.js";
 import { onAuthChange, signIn, signUp, signOut }    from "./auth.js";
 
@@ -13,6 +16,8 @@ let lastSelectedResumeId = "";
 let autoRefreshTimer     = null;
 let countdownInterval    = null;
 let authMode             = "signin";  // "signin" | "signup"
+let folders              = [];
+let currentFolderId      = "";        // "" = All Jobs
 
 const AUTO_REFRESH_SECONDS = 5;
 
@@ -26,6 +31,7 @@ document.addEventListener("DOMContentLoaded", () => {
     if (user) {
       hideAuthModal();
       try {
+        await loadFolders();
         await refreshApp();
       } catch (error) {
         console.error("Failed to load dashboard:", error);
@@ -144,6 +150,101 @@ function bindUiHandlers() {
   });
 
   document.getElementById("btn-refresh")?.addEventListener("click", refreshApp);
+
+  // ---------------------------------------------------------------------------
+  // Folder dropdown
+  // ---------------------------------------------------------------------------
+
+  document.getElementById("folder-select")?.addEventListener("change", (e) => {
+    currentFolderId = e.target.value;
+    setFolderFilter(currentFolderId);
+    updateDeleteFolderButton();
+    refreshApp();
+  });
+
+  document.getElementById("btn-new-folder")?.addEventListener("click", async () => {
+    const name = window.prompt("Folder name:");
+    if (!name?.trim()) return;
+    try {
+      await createFolder({ name: name.trim() });
+      await loadFolders();
+    } catch (error) {
+      window.alert(`Failed to create folder: ${error.message}`);
+    }
+  });
+
+  document.getElementById("btn-delete-folder")?.addEventListener("click", async () => {
+    if (!currentFolderId) return;
+    const folder = folders.find((f) => f.folder_id === currentFolderId);
+    const label  = folder?.name || currentFolderId;
+    if (!window.confirm(
+      `Delete folder "${label}"? Jobs inside will move to All Jobs.`
+    )) return;
+    try {
+      await deleteFolder(currentFolderId);
+      currentFolderId = "";
+      setFolderFilter("");
+      await loadFolders();
+      await refreshApp();
+    } catch (error) {
+      window.alert(`Failed to delete folder: ${error.message}`);
+    }
+  });
+
+  // ---------------------------------------------------------------------------
+  // Filter bar — status + search
+  // ---------------------------------------------------------------------------
+
+  document.getElementById("filter-status")?.addEventListener("change", (e) => {
+    setStatusFilter(e.target.value);
+    refreshApp();
+  });
+
+  document.getElementById("filter-search")?.addEventListener("input", (e) => {
+    setSearchFilter(e.target.value);
+    refreshApp();
+  });
+}
+
+/* ================================================================================
+/* Folders
+/* ================================================================================ */
+
+/* -------------------------------------------------------------------------- */
+/* Function: loadFolders                                                       */
+/* Purpose: Fetch the folder list and repopulate the folder dropdown,         */
+/*          preserving the current selection when it still exists.            */
+/* -------------------------------------------------------------------------- */
+async function loadFolders() {
+  try {
+    folders = await listFolders();
+  } catch (_) {
+    folders = [];
+  }
+  const select = document.getElementById("folder-select");
+  if (!select) return;
+
+  select.innerHTML = `<option value="">All Jobs</option>`;
+  folders.forEach((f) => {
+    const opt = document.createElement("option");
+    opt.value       = f.folder_id;
+    opt.textContent = f.name;
+    select.appendChild(opt);
+  });
+
+  // Restore the current selection if the folder still exists
+  const stillValid = folders.some((f) => f.folder_id === currentFolderId);
+  if (!stillValid) currentFolderId = "";
+  select.value = currentFolderId;
+  setFolderFilter(currentFolderId);
+  updateDeleteFolderButton();
+}
+
+function updateDeleteFolderButton() {
+  const btn = document.getElementById("btn-delete-folder");
+  if (!btn) return;
+  if (currentFolderId) btn.classList.remove("hidden");
+  else                 btn.classList.add("hidden");
 }
 
 /* ================================================================================
@@ -455,6 +556,7 @@ async function refreshApp() {
 function updateAuthButtons(loggedIn) {
   document.getElementById("btn-sign-in")?.classList.toggle("hidden",  loggedIn);
   document.getElementById("btn-sign-out")?.classList.toggle("hidden", !loggedIn);
+  document.getElementById("filter-bar")?.classList.toggle("hidden",   !loggedIn);
   for (const id of ["btn-refresh", "btn-new-job", "btn-manage-resumes"]) {
     const el = document.getElementById(id);
     if (!el) continue;

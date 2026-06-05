@@ -24,6 +24,86 @@ x-google-backend:
 
 paths:
 
+  /folders:
+    options:
+      operationId: corsFolders
+      parameters: []
+      responses:
+        "204":
+          description: CORS preflight
+    get:
+      operationId: listFolders
+      security:
+        - firebase: []
+      parameters: []
+      responses:
+        "200":
+          description: OK
+    post:
+      operationId: createFolder
+      security:
+        - firebase: []
+      parameters:
+        - in: body
+          name: body
+          schema:
+            type: object
+      responses:
+        "200":
+          description: OK
+
+  /folders/{id}:
+    options:
+      operationId: corsFolderById
+      parameters:
+        - in: path
+          name: id
+          required: true
+          type: string
+      responses:
+        "204":
+          description: CORS preflight
+    delete:
+      operationId: deleteFolder
+      security:
+        - firebase: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          type: string
+      responses:
+        "200":
+          description: OK
+
+  /jobs/{id}/folder:
+    options:
+      operationId: corsJobFolder
+      parameters:
+        - in: path
+          name: id
+          required: true
+          type: string
+      responses:
+        "204":
+          description: CORS preflight
+    patch:
+      operationId: moveJobToFolder
+      security:
+        - firebase: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          type: string
+        - in: body
+          name: body
+          schema:
+            type: object
+      responses:
+        "200":
+          description: OK
+
   /resumes:
     options:
       operationId: corsResumes

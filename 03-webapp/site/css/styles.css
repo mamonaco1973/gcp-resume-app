@@ -68,6 +68,88 @@ main {
 }
 
 /* ================================================================ */
+/* Filter Bar */
+/* ================================================================ */
+
+.filter-bar {
+  display: flex;
+  align-items: flex-end;
+  gap: 24px;
+  padding: 12px 24px;
+  background: white;
+  border-bottom: 1px solid #ddd;
+  flex-wrap: wrap;
+}
+
+.filter-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.filter-group label {
+  font-size: 12px;
+  font-weight: 600;
+  color: #555;
+}
+
+/* Controls within a group sit in a row (select + action buttons) */
+.filter-group-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.filter-group select,
+.filter-group input[type="text"] {
+  padding: 6px 8px;
+  font-size: 14px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  background: white;
+  color: #222;
+  height: 34px;
+  box-sizing: border-box;
+}
+
+.filter-group--search input[type="text"] {
+  width: 220px;
+}
+
+/* ================================================================ */
+/* Move inline picker */
+/* ================================================================ */
+
+.move-inline {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.move-folder-select {
+  font-size: 13px;
+  padding: 4px 6px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  max-width: 160px;
+}
+
+.move-cancel-btn {
+  background: #888;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  padding: 4px 7px;
+  cursor: pointer;
+  font-size: 12px;
+  line-height: 1;
+}
+
+.move-cancel-btn:hover {
+  background: #666;
+}
+
+/* ================================================================ */
 /* Table */
 /* ================================================================ */
 

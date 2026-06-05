@@ -183,6 +183,89 @@ def _handle_delete_resume(owner, resume_id):
 
 
 # ================================================================================
+# Folder Handlers
+# ================================================================================
+
+def _handle_list_folders(owner):
+    docs = (
+        db.collection("resume_app_folders")
+        .where("owner", "==", owner)
+        .order_by("created_at", direction=firestore.Query.ASCENDING)
+        .stream()
+    )
+    return _response(200, [
+        {
+            "folder_id":  d["folder_id"],
+            "name":       d.get("name", ""),
+            "created_at": _ts_ms(d.get("created_at")),
+        }
+        for doc in docs
+        for d in [doc.to_dict()]
+    ])
+
+
+def _handle_create_folder(owner, body):
+    name = (body.get("name") or "").strip()
+    if not name:
+        return _response(400, {"error": "name is required"})
+
+    folder_id = f"FOLDER-{uuid.uuid4().hex[:12]}"
+    now       = _now()
+    db.collection("resume_app_folders").document(f"{owner}_{folder_id}").set({
+        "owner":      owner,
+        "folder_id":  folder_id,
+        "name":       name,
+        "created_at": now,
+        "ttl":        now + TTL_SECONDS,
+    })
+    return _response(200, {"folder_id": folder_id, "name": name})
+
+
+def _handle_delete_folder(owner, folder_id):
+    doc_ref = db.collection("resume_app_folders").document(f"{owner}_{folder_id}")
+    doc     = doc_ref.get()
+    if not doc.exists:
+        return _response(404, {"error": "not found"})
+    if doc.to_dict().get("owner") != owner:
+        return _response(403, {"error": "forbidden"})
+
+    # Clear folder_id from any jobs that referenced this folder
+    jobs = (
+        db.collection("resume_app_jobs")
+        .where("owner", "==", owner)
+        .where("folder_id", "==", folder_id)
+        .stream()
+    )
+    for job_doc in jobs:
+        job_doc.reference.update({"folder_id": None})
+
+    doc_ref.delete()
+    return _response(200, {"deleted": folder_id})
+
+
+def _handle_move_job_to_folder(owner, job_id, body):
+    doc_ref = db.collection("resume_app_jobs").document(f"{owner}_{job_id}")
+    doc     = doc_ref.get()
+    if not doc.exists:
+        return _response(404, {"error": "not found"})
+    if doc.to_dict().get("owner") != owner:
+        return _response(403, {"error": "forbidden"})
+
+    folder_id = body.get("folder_id") or None
+
+    # Verify the folder exists if one was specified
+    if folder_id:
+        folder_doc = db.collection("resume_app_folders").document(
+            f"{owner}_{folder_id}"
+        ).get()
+        if not folder_doc.exists:
+            return _response(404, {"error": "folder not found"})
+
+    doc_ref.update({"folder_id": folder_id})
+    return _response(200, {"job_id": job_id, "folder_id": folder_id})
+
+
+# ================================================================================
 # Job Handlers
 # ================================================================================
 
@@ -204,6 +287,7 @@ def _handle_list_jobs(owner):
             "score":       d.get("score"),
             "status":      d.get("status", "submitted"),
             "created_at":  _ts_ms(d.get("created_at")),
+            "folder_id":   d.get("folder_id"),
         }
         for doc in docs
         for d in [doc.to_dict()]
@@ -259,6 +343,7 @@ def _handle_create_job(owner, body):
         "company_name": "",
         "score":        None,
         "status":       "submitted",
+        "folder_id":    None,
         "created_at":   now,
         "ttl":          now + TTL_SECONDS,
     })
@@ -370,6 +455,18 @@ def resume_api(request):
     try:
         body = request.get_json(silent=True) or {}
 
+        # /folders
+        if len(segments) == 1 and segments[0] == "folders":
+            if method == "GET":
+                return _handle_list_folders(owner)
+            if method == "POST":
+                return _handle_create_folder(owner, body)
+
+        # /folders/{id}
+        if len(segments) == 2 and segments[0] == "folders":
+            if method == "DELETE":
+                return _handle_delete_folder(owner, segments[1])
+
         # /resumes
         if len(segments) == 1 and segments[0] == "resumes":
             if method == "GET":
@@ -406,6 +503,11 @@ def resume_api(request):
         if len(segments) == 3 and segments[0] == "jobs" and segments[2] == "notes":
             if method == "PATCH":
                 return _handle_update_job_notes(owner, segments[1], body)
+
+        # /jobs/{id}/folder
+        if len(segments) == 3 and segments[0] == "jobs" and segments[2] == "folder":
+            if method == "PATCH":
+                return _handle_move_job_to_folder(owner, segments[1], body)
 
         return _response(404, {"error": "not found"})
 

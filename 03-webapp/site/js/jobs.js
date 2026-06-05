@@ -4,7 +4,7 @@
 /* and per-row deletion. Exported loadJobs() is the public entry point.       */
 /* ========================================================================== */
 
-import { deleteJob, listJobs } from "./api.js";
+import { deleteJob, listJobs, moveJobToFolder } from "./api.js";
 
 let jobs = [];
 let currentSort = {
@@ -12,8 +12,13 @@ let currentSort = {
   direction: "desc"
 };
 
+// Active filter state — set by app.js via the exported setters below
+let filterFolderId = "";   // "" = All Jobs
+let filterStatus   = "";   // "" = All statuses
+let filterSearch   = "";   // "" = no text search
+
 // -----------------------------------------------------------------------------
-// Public entry point
+// Public API
 // -----------------------------------------------------------------------------
 
 export async function loadJobs() {
@@ -22,6 +27,10 @@ export async function loadJobs() {
   renderJobsTable();
   bindSortHandlers();
 }
+
+export function setFolderFilter(folderId) { filterFolderId = folderId || ""; }
+export function setStatusFilter(status)   { filterStatus   = status   || ""; }
+export function setSearchFilter(text)     { filterSearch   = text     || ""; }
 
 // Returns true if any job is still being processed, so the dashboard
 // knows to keep polling.
@@ -85,6 +94,35 @@ function normalizeSortValue(value, field) {
 }
 
 // -----------------------------------------------------------------------------
+// Filtering
+// -----------------------------------------------------------------------------
+
+/* -------------------------------------------------------------------------- */
+/* Function: filteredJobs                                                      */
+/* Purpose: Apply active folder, status, and search filters to the full       */
+/*          jobs array. All filtering is client-side; the API returns all.    */
+/* -------------------------------------------------------------------------- */
+function filteredJobs() {
+  const term = filterSearch.toLowerCase();
+  return jobs.filter((job) => {
+    if (filterFolderId) {
+      if ((job.folder_id || "") !== filterFolderId) return false;
+    }
+    if (filterStatus) {
+      if ((job.status || "").toLowerCase() !== filterStatus.toLowerCase()) {
+        return false;
+      }
+    }
+    if (term) {
+      const title   = (job.job_title || "").toLowerCase();
+      const company = (job.company   || "").toLowerCase();
+      if (!title.includes(term) && !company.includes(term)) return false;
+    }
+    return true;
+  });
+}
+
+// -----------------------------------------------------------------------------
 // Rendering
 // -----------------------------------------------------------------------------
 
@@ -95,16 +133,21 @@ function renderJobsTable() {
 
   tbody.innerHTML = "";
 
-  if (!jobs.length) {
+  const visible = filteredJobs();
+
+  if (!visible.length) {
     table.classList.add("hidden");
     emptyState.classList.remove("hidden");
+    emptyState.innerHTML = jobs.length
+      ? "<p>No jobs match the current filters.</p>"
+      : "<p>No jobs submitted yet.</p><p>Click <b>Score New Job</b> to begin.</p>";
     return;
   }
 
   table.classList.remove("hidden");
   emptyState.classList.add("hidden");
 
-  jobs.forEach((job) => {
+  visible.forEach((job) => {
     const row = document.createElement("tr");
     row.innerHTML = `
       <td>${escapeHtml(job.job_title || "—")}</td>
@@ -113,14 +156,20 @@ function renderJobsTable() {
       <td>${formatScore(job.score)}</td>
       <td>${formatDate(job.created_at)}</td>
       <td class="row-actions">
-        <button type="button" class="open-job-btn"   data-job-id="${escapeHtml(job.job_id)}">Open</button>
-        <button type="button" class="delete-job-btn" data-job-id="${escapeHtml(job.job_id)}">Delete</button>
+        <button type="button" class="open-job-btn"
+          data-job-id="${escapeHtml(job.job_id)}">Open</button>
+        <button type="button" class="move-job-btn"
+          data-job-id="${escapeHtml(job.job_id)}"
+          data-folder-id="${escapeHtml(job.folder_id || "")}">Move</button>
+        <button type="button" class="delete-job-btn"
+          data-job-id="${escapeHtml(job.job_id)}">Delete</button>
       </td>
     `;
     tbody.appendChild(row);
   });
 
   bindOpenHandlers();
+  bindMoveHandlers();
   bindDeleteHandlers();
 }
 
@@ -150,6 +199,78 @@ function bindOpenHandlers() {
     button.addEventListener("click", () => {
       const jobId = button.dataset.jobId;
       if (jobId) window.open(`job.html?id=${encodeURIComponent(jobId)}`, jobId);
+    });
+    button.dataset.bound = "true";
+  });
+}
+
+// -----------------------------------------------------------------------------
+// Move actions
+// -----------------------------------------------------------------------------
+
+/* -------------------------------------------------------------------------- */
+/* Function: bindMoveHandlers                                                  */
+/* Purpose: Wire each Move button to swap itself for an inline folder picker, */
+/*          call the API on change, then restore the button on cancel.        */
+/* -------------------------------------------------------------------------- */
+function bindMoveHandlers() {
+  document.querySelectorAll(".move-job-btn").forEach((button) => {
+    if (button.dataset.bound === "true") return;
+    button.addEventListener("click", () => {
+      const jobId          = button.dataset.jobId;
+      const currentFolder  = button.dataset.folderId || "";
+
+      // Build a temporary inline <select> from the filter bar's folder options
+      const folderSelect  = document.getElementById("folder-select");
+      const inlineSelect  = document.createElement("select");
+      inlineSelect.className = "move-folder-select";
+
+      // "Unassigned" is the first option (value = "")
+      const unassigned = document.createElement("option");
+      unassigned.value       = "";
+      unassigned.textContent = "— Unassigned —";
+      inlineSelect.appendChild(unassigned);
+
+      if (folderSelect) {
+        Array.from(folderSelect.options).forEach((opt) => {
+          if (!opt.value) return; // skip the "All Jobs" option
+          const o = document.createElement("option");
+          o.value       = opt.value;
+          o.textContent = opt.textContent;
+          inlineSelect.appendChild(o);
+        });
+      }
+      inlineSelect.value = currentFolder;
+
+      // Cancel button restores the Move button
+      const cancelBtn = document.createElement("button");
+      cancelBtn.type        = "button";
+      cancelBtn.textContent = "✕";
+      cancelBtn.className   = "move-cancel-btn";
+
+      const wrapper = document.createElement("span");
+      wrapper.className = "move-inline";
+      wrapper.appendChild(inlineSelect);
+      wrapper.appendChild(cancelBtn);
+
+      button.replaceWith(wrapper);
+
+      cancelBtn.addEventListener("click", () => wrapper.replaceWith(button));
+
+      inlineSelect.addEventListener("change", async () => {
+        const newFolderId = inlineSelect.value || null;
+        try {
+          inlineSelect.disabled = true;
+          await moveJobToFolder(jobId, newFolderId);
+          // Update in-memory record so filters reflect the change immediately
+          const job = jobs.find((j) => j.job_id === jobId);
+          if (job) job.folder_id = newFolderId || "";
+          renderJobsTable();
+        } catch (error) {
+          window.alert(`Move failed: ${error.message}`);
+          wrapper.replaceWith(button);
+        }
+      });
     });
     button.dataset.bound = "true";
   });
