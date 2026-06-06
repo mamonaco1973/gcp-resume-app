@@ -67,15 +67,14 @@ function renderJobDetail(job, folders) {
   const extLink = document.getElementById("jd-ext-link");
   if (extLink) extLink.href = `job.html?id=${encodeURIComponent(job.job_id)}`;
 
-  setText("jd-job-title",       job.job_title      || "—");
-  setText("jd-company",         job.company        || "—");
-  setText("jd-status",          job.status         || "—");
-  setText("jd-status-message",  job.status_message || "—");
-  setText("jd-source-type",     job.source_type    || "—");
-  setText("jd-scored-at",       formatDate(job.created_at));
+  setText("jd-job-title",      job.job_title      || "—");
+  setText("jd-company",        job.company        || "—");
+  setText("jd-status-message", job.status_message || "—");
+  setText("jd-source-type",    job.source_type    || "—");
+  setText("jd-scored-at",      formatDate(job.created_at));
 
-  const scoreEl = document.getElementById("jd-score");
-  if (scoreEl) scoreEl.innerHTML = formatScore(job.score);
+  renderStatusBadge(job.status);
+  renderScoreRing(job.score);
 
   const folder = folders.find((f) => f.folder_id === job.folder_id);
   setText("jd-folder", folder?.name || "—");
@@ -105,11 +104,37 @@ function renderTextBlock(id, value) {
   el.textContent = String(value || "").trim() || "—";
 }
 
-function formatScore(score) {
-  if (score == null) return "—";
-  const n   = Number(score);
-  const cls = n >= 75 ? "score-high" : n >= 50 ? "score-mid" : "score-low";
-  return `<span class="score-badge ${cls}">${n}</span>`;
+function renderStatusBadge(status) {
+  const el = document.getElementById("jd-status");
+  if (!el) return;
+  const s = status || "";
+  el.innerHTML = s
+    ? `<span class="status-badge status-${escapeHtml(s)}">${escapeHtml(s)}</span>`
+    : "—";
+}
+
+/* -------------------------------------------------------------------------- */
+/* Function: renderScoreRing                                                   */
+/* Purpose: Animate the SVG donut arc and center label to reflect the score.  */
+/*          Circumference of r=40 circle ≈ 251.                               */
+/* -------------------------------------------------------------------------- */
+function renderScoreRing(score) {
+  const arc   = document.getElementById("jd-score-arc");
+  const label = document.getElementById("jd-score-label");
+  const CIRC  = 251;
+
+  if (score == null) {
+    if (arc)   { arc.style.strokeDasharray = `0 ${CIRC}`; arc.style.stroke = "#e2e8f0"; }
+    if (label) { label.textContent = "—"; label.style.fill = "#94a3b8"; }
+    return;
+  }
+
+  const n     = Number(score);
+  const color = n >= 75 ? "#1b7a3c" : n >= 50 ? "#a66b00" : "#b33434";
+  const len   = (Math.max(0, Math.min(100, n)) / 100) * CIRC;
+
+  if (arc)   { arc.style.strokeDasharray = `${len} ${CIRC}`; arc.style.stroke = color; }
+  if (label) { label.textContent = n; label.style.fill = color; }
 }
 
 function formatDate(value) {

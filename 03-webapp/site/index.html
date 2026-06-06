@@ -386,16 +386,32 @@
 
       <div id="jd-content" class="hidden">
 
+        <!-- Hero card: title, company, score ring, status -->
+        <div class="jd-hero">
+          <div class="jd-hero-info">
+            <div id="jd-job-title" class="jd-hero-title">—</div>
+            <div id="jd-company"   class="jd-hero-company">—</div>
+            <div class="jd-hero-meta">
+              <span id="jd-status"></span>
+              <span id="jd-scored-at" class="jd-hero-date"></span>
+            </div>
+          </div>
+          <div class="jd-score-ring-wrap">
+            <svg class="jd-score-ring" viewBox="0 0 100 100" width="96" height="96">
+              <circle class="jd-score-ring-bg"  cx="50" cy="50" r="40"/>
+              <circle class="jd-score-ring-arc" id="jd-score-arc" cx="50" cy="50" r="40"
+                stroke-dasharray="0 251"/>
+              <text id="jd-score-label" class="jd-score-label"
+                x="50" y="50" transform="rotate(90,50,50)">—</text>
+            </svg>
+          </div>
+        </div>
+
         <details class="accordion-section" open>
           <summary>General Information</summary>
           <div class="accordion-body">
             <div class="detail-grid">
-              <div class="detail-row"><div class="detail-label">Job Title</div><div id="jd-job-title" class="detail-value">—</div></div>
-              <div class="detail-row"><div class="detail-label">Company</div><div id="jd-company" class="detail-value">—</div></div>
               <div class="detail-row"><div class="detail-label">Folder</div><div id="jd-folder" class="detail-value">—</div></div>
-              <div class="detail-row"><div class="detail-label">Score</div><div id="jd-score" class="detail-value">—</div></div>
-              <div class="detail-row"><div class="detail-label">Scored Date</div><div id="jd-scored-at" class="detail-value">—</div></div>
-              <div class="detail-row"><div class="detail-label">Status</div><div id="jd-status" class="detail-value">—</div></div>
               <div class="detail-row"><div class="detail-label">Status Message</div><div id="jd-status-message" class="detail-value">—</div></div>
               <div class="detail-row"><div class="detail-label">Source Type</div><div id="jd-source-type" class="detail-value">—</div></div>
               <div class="detail-row"><div class="detail-label">Job URL</div><div id="jd-url" class="detail-value">—</div></div>
