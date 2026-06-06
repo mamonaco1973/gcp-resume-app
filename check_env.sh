@@ -65,6 +65,7 @@ echo "NOTE: Running api_setup.sh (enables APIs, Firestore, Identity Platform)...
 # Vertex AI Model Check
 # ================================================================================
 
+source "${SCRIPT_DIR}/gemini-config.sh"
 GEMINI_MODEL_ID="${GEMINI_MODEL_ID:-gemini-2.5-flash}"
 echo "NOTE: Testing Vertex AI model ${GEMINI_MODEL_ID}..."
 
