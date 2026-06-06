@@ -557,22 +557,40 @@ By default the app uses email and password authentication only. To add a
 **Login with Google** button to the sign-in modal, complete the one-time
 OAuth credential setup below and re-run `apply.sh`.
 
-### Step 1 — Create an OAuth 2.0 Client ID
+### Step 1 — Configure the OAuth consent screen
+
+If this is a new GCP project you will be prompted to configure the OAuth
+consent screen before creating credentials:
+
+1. Open [GCP Console → APIs & Services → OAuth consent screen](https://console.cloud.google.com/apis/credentials/consent)
+2. Set **User type** to **External**
+3. Fill in the required app name and support email fields
+4. Add your email address as a **Test user**
+5. Save and continue through the remaining screens
+
+### Step 2 — Create an OAuth 2.0 Client ID
 
 1. Open [GCP Console → APIs & Services → Credentials](https://console.cloud.google.com/apis/credentials)
 2. Click **Create Credentials → OAuth 2.0 Client ID**
 3. Set **Application type** to **Web application**
-4. Under **Authorized JavaScript origins**, add your webapp URL
-   (printed by `validate.sh`, e.g. `https://storage.googleapis.com`)
-5. Click **Create** — copy the **Client ID** and **Client secret**
+4. Under **Authorized JavaScript origins** add:
+   ```
+   https://storage.googleapis.com
+   ```
+5. Under **Authorized redirect URIs** add the Firebase auth handler for your
+   project (printed by `validate.sh`):
+   ```
+   https://<your-project-id>.firebaseapp.com/__/auth/handler
+   ```
+6. Click **Create** — copy the **Client ID** and **Client secret**
 
-> If prompted to configure the OAuth consent screen first, set it to
-> **External**, fill in the required fields, and add your email as a
-> test user.
+> **Note:** OAuth client changes can take a few minutes to propagate. If you
+> see a `redirect_uri_mismatch` error immediately after saving, wait 2-3
+> minutes and try again.
 
-### Step 2 — Export the credentials and redeploy
+### Step 3 — Export the credentials and redeploy
 
-Export the credentials from step 1 in your shell, then run `apply.sh`:
+Export the credentials from step 2 in your shell, then run `apply.sh`:
 
 ```bash
 export GOOGLE_OAUTH_CLIENT_ID="123456789-abc.apps.googleusercontent.com"
@@ -580,20 +598,19 @@ export GOOGLE_OAUTH_CLIENT_SECRET="GOCSPX-..."
 ./apply.sh
 ```
 
-If the variables are not set, `apply.sh` passes empty strings and Google
-sign-in is simply not provisioned — no error occurs.
-
-Terraform detects that both credentials are set and provisions the
-`google_identity_platform_default_supported_idp_config` resource, enabling
-Google as a sign-in provider in Identity Platform. The **Login with Google**
+Terraform provisions the `google_identity_platform_default_supported_idp_config`
+resource to enable Google as a sign-in provider, and adds `storage.googleapis.com`
+to the Identity Platform authorized domains list. The **Login with Google**
 button is already present in the frontend — no further code changes are needed.
 
-If the credentials are left empty, `validate.sh` prints a reminder:
+If the variables are not set, `apply.sh` passes empty strings and Google
+sign-in is simply not provisioned. `validate.sh` always prints the exact
+values needed for your OAuth client:
 
 ```
-WARNING: Google sign-in is not configured.
-To enable it, add your OAuth credentials to google-auth-config.sh
-and re-run apply.sh.
+  Google sign-in is configured. Ensure your OAuth client has these set:
+    Authorized JavaScript origins : https://storage.googleapis.com
+    Authorized redirect URIs      : https://<project-id>.firebaseapp.com/__/auth/handler
 ```
 
 ---
