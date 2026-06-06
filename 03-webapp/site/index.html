@@ -362,6 +362,101 @@
   </div>
 
   <!-- ================================================================ -->
+  <!-- Job Detail Modal -->
+  <!-- ================================================================ -->
+
+  <div id="job-detail-modal" class="modal hidden">
+    <div class="modal-content modal-content--job-detail">
+
+      <div class="jd-modal-header">
+        <h2 class="jd-modal-title">Job Details</h2>
+        <div class="jd-modal-actions">
+          <a id="jd-ext-link" href="#" target="_blank" rel="noopener noreferrer"
+             class="icon-btn btn-secondary" title="Open in new tab">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+          </a>
+          <button type="button" id="jd-close-btn" class="icon-btn btn-secondary" title="Close">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </button>
+        </div>
+      </div>
+
+      <div id="jd-error" class="field-error hidden"></div>
+      <div id="jd-loading"><p>Loading job details...</p></div>
+
+      <div id="jd-content" class="hidden">
+
+        <details class="accordion-section" open>
+          <summary>General Information</summary>
+          <div class="accordion-body">
+            <div class="detail-grid">
+              <div class="detail-row"><div class="detail-label">Job Title</div><div id="jd-job-title" class="detail-value">—</div></div>
+              <div class="detail-row"><div class="detail-label">Company</div><div id="jd-company" class="detail-value">—</div></div>
+              <div class="detail-row"><div class="detail-label">Folder</div><div id="jd-folder" class="detail-value">—</div></div>
+              <div class="detail-row"><div class="detail-label">Score</div><div id="jd-score" class="detail-value">—</div></div>
+              <div class="detail-row"><div class="detail-label">Scored Date</div><div id="jd-scored-at" class="detail-value">—</div></div>
+              <div class="detail-row"><div class="detail-label">Status</div><div id="jd-status" class="detail-value">—</div></div>
+              <div class="detail-row"><div class="detail-label">Status Message</div><div id="jd-status-message" class="detail-value">—</div></div>
+              <div class="detail-row"><div class="detail-label">Source Type</div><div id="jd-source-type" class="detail-value">—</div></div>
+              <div class="detail-row"><div class="detail-label">Job URL</div><div id="jd-url" class="detail-value">—</div></div>
+            </div>
+          </div>
+        </details>
+
+        <details class="accordion-section">
+          <summary>Attachments</summary>
+          <div class="accordion-body">
+            <div class="attachment-upload-bar">
+              <input type="file" id="jd-attachment-file-input" style="display:none"
+                accept=".pdf,.doc,.docx,.txt,.rtf,.png,.jpg,.jpeg,.gif,.zip,.csv,.xls,.xlsx">
+              <button type="button" id="jd-btn-upload-attachment">Upload File</button>
+              <span id="jd-attachment-upload-status" class="field-success hidden"></span>
+              <span id="jd-attachment-upload-error"  class="field-error  hidden"></span>
+            </div>
+            <div id="jd-attachment-list"></div>
+          </div>
+        </details>
+
+        <details class="accordion-section" open>
+          <summary>Analysis</summary>
+          <div class="accordion-body">
+            <div id="jd-analysis" class="detail-text-block">—</div>
+          </div>
+        </details>
+
+        <details class="accordion-section" open>
+          <summary>Job Description</summary>
+          <div class="accordion-body">
+            <div id="jd-description" class="detail-text-block">—</div>
+          </div>
+        </details>
+
+        <details class="accordion-section">
+          <summary>Resume</summary>
+          <div class="accordion-body">
+            <div id="jd-resume" class="detail-text-block">—</div>
+          </div>
+        </details>
+
+        <details class="accordion-section">
+          <summary>Notes</summary>
+          <div class="accordion-body">
+            <textarea id="jd-notes" class="form-control" rows="10"
+              placeholder="Add notes about this job..."></textarea>
+            <div id="jd-notes-error"   class="field-error   hidden"></div>
+            <div id="jd-notes-success" class="field-success hidden"></div>
+            <div class="form-actions">
+              <button id="jd-update-notes-btn" type="button">Update Notes</button>
+            </div>
+          </div>
+        </details>
+
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ================================================================ -->
   <!-- Load Application -->
   <!-- ================================================================ -->
 

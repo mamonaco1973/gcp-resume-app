@@ -7,12 +7,14 @@
 import { deleteJob, listJobs, moveJobToFolder,
          listAttachments, downloadAttachment }   from "./api.js";
 import { showAlert, showConfirm }               from "./modal.js";
+import { openJobModal, initJobModal }           from "./job-modal.js";
 
 // SVG icon strings — used by bulk-bar innerHTML resets
 const ICON_TRASH    = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>`;
 const ICON_ARROW    = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>`;
 const ICON_CLIP     = `<svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>`;
 const ICON_DOWNLOAD = `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>`;
+const ICON_EXT      = `<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>`;
 
 let jobs = [];
 let currentSort = {
@@ -38,6 +40,7 @@ let activeDropdownJobId = null;
 // -----------------------------------------------------------------------------
 
 export async function loadJobs() {
+  initJobModal();
   jobs = await listJobs();
   sortJobs();
   renderJobsTable();
@@ -184,18 +187,28 @@ function renderJobsTable() {
 
   bindCheckboxHandlers(visible);
   bindClipHandlers();
+  bindJobOpenHandlers();
   updateBulkActionBar();
 }
 
 function renderJobTitle(job) {
   const title = escapeHtml(job.job_title || "—");
+  const jobId = escapeHtml(job.job_id);
   const href  = `job.html?id=${encodeURIComponent(job.job_id)}`;
   const n     = job.attachment_count || 0;
   const clip  = n > 0
-    ? ` <button class="btn-clip" data-job-id="${escapeHtml(job.job_id)}"
+    ? ` <button class="btn-clip" data-job-id="${jobId}"
           title="${n} attachment${n === 1 ? "" : "s"}">${ICON_CLIP}</button>`
     : "";
-  return `<a href="${href}" target="${escapeHtml(job.job_id)}">${title}</a>${clip}`;
+  const ext = `<a class="btn-ext-link" href="${href}" target="_blank"
+    rel="noopener noreferrer" title="Open in new tab">${ICON_EXT}</a>`;
+  return `<button class="btn-job-open" data-job-id="${jobId}">${title}</button>${ext}${clip}`;
+}
+
+function bindJobOpenHandlers() {
+  document.querySelectorAll(".btn-job-open").forEach((btn) => {
+    btn.addEventListener("click", () => openJobModal(btn.dataset.jobId));
+  });
 }
 
 function renderCompany(job) {
