@@ -29,6 +29,12 @@ export PROJECT_ID=$(jq -r '.project_id' "${CREDENTIALS}")
 echo "NOTE: Deploying 01-backend..."
 cd "${SCRIPT_DIR}/01-backend"
 terraform init -reconfigure -input=false
+
+# Import the Identity Platform config singleton before apply — GCP does not
+# allow creating or destroying this resource once Identity Platform is enabled.
+terraform import google_identity_platform_config.default \
+  "projects/${PROJECT_ID}" 2>/dev/null || true
+
 terraform apply -auto-approve \
   -var="google_oauth_client_id=${GOOGLE_OAUTH_CLIENT_ID:-}" \
   -var="google_oauth_client_secret=${GOOGLE_OAUTH_CLIENT_SECRET:-}"
