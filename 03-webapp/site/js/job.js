@@ -72,6 +72,8 @@ function renderJob(job, folders) {
   renderTextBlock("job-resume",      job.resume_snapshot);
   renderJobNotes(job.notes || "");
 
+  if (job.job_title) document.title = job.job_title;
+
   document.getElementById("job-detail-loading")?.classList.add("hidden");
   document.getElementById("job-detail-content")?.classList.remove("hidden");
 }
