@@ -492,7 +492,7 @@ function populateJobFolderSelect() {
 
 function resetNewJobForm() {
   document.getElementById("new-job-form")?.reset();
-  const savedSourceType = getCookie("resumeFilter_sourceType") || "url";
+  const savedSourceType = getCookie("resumeFilter_sourceType") || "linkedin_job_id";
   document.getElementById("source-type").value = savedSourceType;
   document.getElementById("job-url").value = "";
   document.getElementById("job-description").value = "";
