@@ -34,7 +34,8 @@
       <button id="btn-refresh" type="button" class="icon-btn" title="Refresh"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg></button>
       <button id="btn-new-job" class="icon-btn" title="Score New Job"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg></button>
       <button id="btn-manage-resumes" class="icon-btn" title="Manage Resumes"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg></button>
-<button id="btn-sign-out" type="button" class="hidden icon-btn" title="Sign Out"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg></button>
+<button id="btn-help" type="button" class="icon-btn" title="Help"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></button>
+      <button id="btn-sign-out" type="button" class="hidden icon-btn" title="Sign Out"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg></button>
     </div>
   </header>
 
@@ -468,6 +469,93 @@
         </details>
 
       </div>
+
+    </div>
+  </div>
+
+  <!-- ================================================================ -->
+  <!-- Help Modal -->
+  <!-- ================================================================ -->
+
+  <div id="help-modal" class="modal hidden">
+    <div class="modal-content modal-content--help">
+
+      <div class="help-modal-header">
+        <h2 class="help-modal-title">How to Use My Jobs</h2>
+        <button type="button" id="btn-help-close" class="icon-btn btn-secondary" title="Close">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+
+      <details class="accordion-section" open>
+        <summary>Getting Started</summary>
+        <div class="accordion-body help-body">
+          <ol>
+            <li>Sign in or create an account.</li>
+            <li>Click the <strong>document icon</strong> to add your resume — paste your resume text and give it a name. You can store multiple resumes.</li>
+            <li>Click the <strong>+ icon</strong> to score a new job. Choose a source:
+              <ul>
+                <li><strong>Job URL</strong> — paste any public job posting link.</li>
+                <li><strong>Paste Job Description</strong> — paste raw text directly.</li>
+                <li><strong>LinkedIn Job IDs</strong> — paste one or more numeric job IDs.</li>
+              </ul>
+            </li>
+            <li>Submit — the AI scores your resume against the job in the background. Results appear within seconds.</li>
+          </ol>
+        </div>
+      </details>
+
+      <details class="accordion-section">
+        <summary>Understanding Scores</summary>
+        <div class="accordion-body help-body">
+          <p>Each job is scored 0–100 based on how well your resume matches the job requirements.</p>
+          <table class="help-score-table">
+            <tr><td class="score-badge score-high">90–100</td><td>Exceptional match — nearly all requirements met</td></tr>
+            <tr><td class="score-badge score-high">70–89</td><td>Strong match — most requirements met, minor gaps</td></tr>
+            <tr><td class="score-badge score-mid">50–69</td><td>Moderate match — some relevant experience, notable gaps</td></tr>
+            <tr><td class="score-badge score-low">30–49</td><td>Weak match — limited relevant experience, significant gaps</td></tr>
+            <tr><td class="score-badge score-low">0–29</td><td>Poor match — little to no relevant experience</td></tr>
+          </table>
+          <p>Open a job to see the full AI analysis — strengths, weaknesses, and a written summary.</p>
+        </div>
+      </details>
+
+      <details class="accordion-section">
+        <summary>Folders</summary>
+        <div class="accordion-body help-body">
+          <ul>
+            <li>Use folders to organize jobs by stage, company, or any category you choose.</li>
+            <li>Create a folder with the <strong>folder+ icon</strong> in the filter bar.</li>
+            <li>Assign a job to a folder at submission time, or move jobs in bulk by selecting rows and using the <strong>Move to</strong> control.</li>
+            <li>Filter the table to a specific folder using the <strong>Folder</strong> dropdown.</li>
+          </ul>
+        </div>
+      </details>
+
+      <details class="accordion-section">
+        <summary>Attachments</summary>
+        <div class="accordion-body help-body">
+          <ul>
+            <li>Attach files to any job — offer letters, notes, interview prep docs, etc.</li>
+            <li>Up to <strong>5 files per job</strong>, 10 MB per file.</li>
+            <li>Supported types: PDF, Word, Excel, images, text, ZIP.</li>
+            <li>Open a job and expand the <strong>Attachments</strong> section to upload or download files.</li>
+            <li>A paperclip icon appears in the table for jobs that have attachments — click it to download directly from the dashboard.</li>
+          </ul>
+        </div>
+      </details>
+
+      <details class="accordion-section">
+        <summary>Token Usage</summary>
+        <div class="accordion-body help-body">
+          <p>Each job scoring request consumes AI tokens. Your usage is shown as a ring in the filter bar.</p>
+          <ul>
+            <li>The ring fills as you use your budget — it turns <strong style="color:#b33434">red</strong> at 80%.</li>
+            <li>When your budget is exhausted, new job submissions are blocked.</li>
+            <li>To request a limit increase, email <a href="mailto:mamonaco1973@gmail.com">mamonaco1973@gmail.com</a>.</li>
+          </ul>
+        </div>
+      </details>
 
     </div>
   </div>

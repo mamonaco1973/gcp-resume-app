@@ -221,6 +221,21 @@ function bindUiHandlers() {
   document.getElementById("btn-refresh")?.addEventListener("click", refreshApp);
 
   // ---------------------------------------------------------------------------
+  // Help modal
+  // ---------------------------------------------------------------------------
+
+  const helpModal = document.getElementById("help-modal");
+  document.getElementById("btn-help")?.addEventListener("click", () => {
+    helpModal?.classList.remove("hidden");
+  });
+  document.getElementById("btn-help-close")?.addEventListener("click", () => {
+    helpModal?.classList.add("hidden");
+  });
+  helpModal?.addEventListener("click", (e) => {
+    if (e.target === helpModal) helpModal.classList.add("hidden");
+  });
+
+  // ---------------------------------------------------------------------------
   // Folder dropdown
   // ---------------------------------------------------------------------------
 

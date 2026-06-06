@@ -419,6 +419,63 @@ tr:hover {
   width: 400px;
 }
 
+.modal-content--help {
+  width: 620px;
+  max-height: 85vh;
+  overflow-y: auto;
+}
+
+.help-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #e6e6e6;
+}
+
+.help-modal-title {
+  margin: 0;
+  font-size: 18px;
+}
+
+.help-body {
+  font-size: 14px;
+  line-height: 1.7;
+  color: #444;
+}
+
+.help-body ol,
+.help-body ul {
+  margin: 0;
+  padding-left: 20px;
+}
+
+.help-body li {
+  margin-bottom: 6px;
+}
+
+.help-body p {
+  margin: 0 0 10px;
+}
+
+.help-score-table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 12px 0;
+}
+
+.help-score-table td {
+  padding: 6px 10px;
+  border: none;
+  vertical-align: middle;
+}
+
+.help-score-table td:first-child {
+  width: 70px;
+  text-align: center;
+}
+
 .modal-message {
   margin: 0 0 20px;
   color: #444;
