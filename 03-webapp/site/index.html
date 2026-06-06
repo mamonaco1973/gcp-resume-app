@@ -262,7 +262,61 @@
 
   <div id="auth-modal" class="modal hidden">
 
-    <div class="modal-content modal-content--sm">
+    <div class="modal-content modal-content--auth">
+
+      <!-- Right panel — branding and value props -->
+      <div class="auth-preview-panel">
+        <div class="auth-preview-inner">
+          <div class="auth-preview-logo">My Jobs</div>
+          <p class="auth-preview-tagline">AI-powered resume scoring.<br>Know your fit before you apply.</p>
+          <ul class="auth-preview-features">
+            <li>
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+              Score any job posting 0–100 against your resume
+            </li>
+            <li>
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+              Paste a URL, job description, or LinkedIn ID
+            </li>
+            <li>
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+              Get strengths, gaps, and a written analysis
+            </li>
+            <li>
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+              Organize jobs into folders, attach files, add notes
+            </li>
+          </ul>
+          <!-- Decorative score rings -->
+          <div class="auth-preview-rings">
+            <svg viewBox="0 0 100 100" width="80" height="80" style="transform:rotate(-90deg)">
+              <circle cx="50" cy="50" r="38" fill="none" stroke="rgba(255,255,255,0.15)" stroke-width="8"/>
+              <circle cx="50" cy="50" r="38" fill="none" stroke="rgba(255,255,255,0.7)" stroke-width="8"
+                stroke-linecap="round" stroke-dasharray="215 239"/>
+              <text x="50" y="50" text-anchor="middle" dominant-baseline="central"
+                style="font-size:22px;font-weight:700;fill:white;transform:rotate(90deg);transform-origin:50px 50px">90</text>
+            </svg>
+            <svg viewBox="0 0 100 100" width="60" height="60" style="transform:rotate(-90deg);opacity:0.6">
+              <circle cx="50" cy="50" r="38" fill="none" stroke="rgba(255,255,255,0.15)" stroke-width="8"/>
+              <circle cx="50" cy="50" r="38" fill="none" stroke="rgba(255,255,255,0.7)" stroke-width="8"
+                stroke-linecap="round" stroke-dasharray="143 239"/>
+              <text x="50" y="50" text-anchor="middle" dominant-baseline="central"
+                style="font-size:22px;font-weight:700;fill:white;transform:rotate(90deg);transform-origin:50px 50px">60</text>
+            </svg>
+            <svg viewBox="0 0 100 100" width="44" height="44" style="transform:rotate(-90deg);opacity:0.35">
+              <circle cx="50" cy="50" r="38" fill="none" stroke="rgba(255,255,255,0.15)" stroke-width="8"/>
+              <circle cx="50" cy="50" r="38" fill="none" stroke="rgba(255,255,255,0.7)" stroke-width="8"
+                stroke-linecap="round" stroke-dasharray="72 239"/>
+              <text x="50" y="50" text-anchor="middle" dominant-baseline="central"
+                style="font-size:22px;font-weight:700;fill:white;transform:rotate(90deg);transform-origin:50px 50px">30</text>
+            </svg>
+          </div>
+        </div>
+      </div>
+
+      <!-- Left panel — auth form -->
+      <div class="auth-form-panel">
+        <div class="modal-content modal-content--sm">
 
       <form id="auth-form">
 
@@ -313,9 +367,12 @@
 
       </form>
 
-    </div>
+      </div><!-- /.modal-content.modal-content--sm -->
+      </div><!-- /.auth-form-panel -->
 
-  </div>
+    </div><!-- /.modal-content.modal-content--auth -->
+
+  </div><!-- /#auth-modal -->
 
   <!-- ================================================================ -->
   <!-- Alert Modal -->
