@@ -46,7 +46,7 @@ TOKEN_LIMIT_DEFAULT = 100_000
 MAX_ATTACHMENT_BYTES = 10 * 1024 * 1024  # 10 MB
 
 # Maximum number of registered users — enforced at registration time
-USER_CAP = 1_000
+USER_CAP = 100
 
 
 # ================================================================================
