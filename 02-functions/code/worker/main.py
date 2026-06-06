@@ -99,6 +99,41 @@ Resume:
 ---
 """
 
+# Variant for raw_text — no pre-extracted title/company, so ask Gemini to
+# pull them from the description as part of the single scoring call.
+_SCORING_PROMPT_RAW = """\
+You are an expert resume reviewer. Score the resume against the job description \
+on a scale of 0–100 and provide analysis. Also extract the job title and \
+company name from the job description.
+
+Scoring guide:
+  90–100  Exceptional match — nearly all requirements met
+  70–89   Strong match — most requirements met, minor gaps
+  50–69   Moderate match — some relevant experience, notable gaps
+  30–49   Weak match — limited relevant experience, significant gaps
+  0–29    Poor match — little to no relevant experience
+
+Return ONLY valid JSON (no markdown fences) in this exact format:
+{{
+  "job_title":   "<short job title, e.g. Senior Software Engineer>",
+  "company_name": "<company name only, e.g. Acme Corp>",
+  "score":       <integer 0-100>,
+  "strengths":   ["<strength 1>", "<strength 2>", "<strength 3>"],
+  "weaknesses":  ["<gap 1>", "<gap 2>", "<gap 3>"],
+  "summary":     "<2-3 sentence overall assessment>"
+}}
+
+Job Description:
+---
+{job_text}
+---
+
+Resume:
+---
+{resume_text}
+---
+"""
+
 
 # ================================================================================
 # Helpers
@@ -188,30 +223,48 @@ def _process_message(data):
 
     # ------------------------------------------------------------------------
     # Phase 1: Extract job metadata and clean description
+    # Skipped for raw_text — user-supplied text needs no cleaning, and
+    # title/company are unknown without a structured source to parse from.
     # ------------------------------------------------------------------------
-    extraction_raw, tokens1 = _call_gemini(
-        _EXTRACTION_PROMPT.format(job_posting=raw_job_text[:20000])
-    )
-    extraction = _parse_json(extraction_raw)
-    job_title    = extraction.get("job_title", "")
-    company_name = extraction.get("company_name", "")
-    job_text     = extraction.get("job_text", raw_job_text[:20000])
+    if source_type == "raw_text":
+        job_title    = ""
+        company_name = ""
+        job_text     = raw_job_text[:20000]
+        tokens1      = 0
+    else:
+        extraction_raw, tokens1 = _call_gemini(
+            _EXTRACTION_PROMPT.format(job_posting=raw_job_text[:20000])
+        )
+        extraction = _parse_json(extraction_raw)
+        job_title    = extraction.get("job_title", "")
+        company_name = extraction.get("company_name", "")
+        job_text     = extraction.get("job_text", raw_job_text[:20000])
 
-    # Overwrite job_description.txt with the cleaned Gemini-extracted text
-    bucket.blob(f"{base}/job_description.txt").upload_from_string(
-        job_text, content_type="text/plain"
-    )
+        # Overwrite job_description.txt with the cleaned Gemini-extracted text
+        bucket.blob(f"{base}/job_description.txt").upload_from_string(
+            job_text, content_type="text/plain"
+        )
 
     # ------------------------------------------------------------------------
     # Phase 2: Score resume against job
+    # raw_text uses a combined prompt that extracts title/company in one call.
     # ------------------------------------------------------------------------
-    scoring_raw, tokens2 = _call_gemini(_SCORING_PROMPT.format(
-        job_title=job_title,
-        company_name=company_name,
-        job_text=job_text[:10000],
-        resume_text=resume_text[:10000],
-    ))
+    if source_type == "raw_text":
+        scoring_raw, tokens2 = _call_gemini(_SCORING_PROMPT_RAW.format(
+            job_text=job_text[:10000],
+            resume_text=resume_text[:10000],
+        ))
+    else:
+        scoring_raw, tokens2 = _call_gemini(_SCORING_PROMPT.format(
+            job_title=job_title,
+            company_name=company_name,
+            job_text=job_text[:10000],
+            resume_text=resume_text[:10000],
+        ))
     scoring = _parse_json(scoring_raw)
+    if source_type == "raw_text":
+        job_title    = scoring.get("job_title", "")
+        company_name = scoring.get("company_name", "")
     score     = int(scoring.get("score", 0))
     strengths = scoring.get("strengths", [])
     weaknesses = scoring.get("weaknesses", [])
