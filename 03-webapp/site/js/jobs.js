@@ -211,7 +211,10 @@ function renderStatus(status) {
 }
 
 function formatScore(score) {
-  return score == null ? "—" : score;
+  if (score == null) return "—";
+  const n = Number(score);
+  const cls = n >= 75 ? "score-high" : n >= 50 ? "score-mid" : "score-low";
+  return `<span class="score-badge ${cls}">${n}</span>`;
 }
 
 function formatDate(value) {

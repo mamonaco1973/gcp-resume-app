@@ -24,17 +24,29 @@ body {
   justify-content: space-between;
   align-items: center;
   padding: 16px 24px;
-  background: white;
-  border-bottom: 1px solid #ddd;
+  background: #1e293b;
+  border-bottom: none;
 }
 
 .app-header h1 {
   margin: 0;
   font-size: 20px;
+  color: #f1f5f9;
 }
 
 .actions button {
   margin-left: 10px;
+}
+
+/* Icon buttons in the dark header need light strokes */
+.app-header .icon-btn {
+  background: transparent;
+  color: #cbd5e1;
+}
+
+.app-header .icon-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: #f1f5f9;
 }
 
 /* ================================================================ */
@@ -286,6 +298,32 @@ tr:hover {
 }
 
 /* ================================================================ */
+/* Score badges                                                      */
+/* ================================================================ */
+
+.score-badge {
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.score-high {
+  background: #e6f6ec;
+  color: #1b7a3c;
+}
+
+.score-mid {
+  background: #fff4d6;
+  color: #a66b00;
+}
+
+.score-low {
+  background: #fdeaea;
+  color: #b33434;
+}
+
+/* ================================================================ */
 /* Table loading state — dims rows while a fetch is in-flight      */
 /* ================================================================ */
 
@@ -306,7 +344,7 @@ tr:hover {
   align-items: center;
   gap: 6px;
   font-size: 12px;
-  color: #555;
+  color: #94a3b8;
 }
 
 #auto-refresh-indicator .spinner {
