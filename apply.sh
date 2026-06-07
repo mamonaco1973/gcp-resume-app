@@ -101,8 +101,22 @@ envsubst < js/config.js.tmpl > js/config.js
 
 echo "NOTE: Deploying SPA to Firebase Hosting (site: ${FIREBASE_SITE_ID})..."
 cd "${SCRIPT_DIR}"
+
+# Inject site ID into firebase.json — CLI requires the site field to
+# match the Hosting site resource when multiple sites exist.
+cat > firebase.json << EOF
+{
+  "hosting": {
+    "site": "${FIREBASE_SITE_ID}",
+    "public": "03-webapp/site",
+    "ignore": ["firebase.json", "**/.*", "**/node_modules/**", "js/config.js.tmpl"],
+    "rewrites": [{"source": "**", "destination": "/index.html"}]
+  }
+}
+EOF
+
 export GOOGLE_APPLICATION_CREDENTIALS="${CREDENTIALS}"
-firebase deploy --only "hosting:${FIREBASE_SITE_ID}" \
+firebase deploy --only hosting \
   --project "${PROJECT_ID}" \
   --non-interactive
 
