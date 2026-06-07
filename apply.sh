@@ -121,6 +121,32 @@ firebase deploy --only hosting \
   --non-interactive
 
 # ================================================================================
+# Authorize Hosting Domain in Identity Platform
+# Firebase Auth rejects sign-ins from domains not on the allowlist — the
+# .web.app domain must be added explicitly after the site is created.
+# ================================================================================
+
+echo "NOTE: Authorizing ${FIREBASE_SITE_ID}.web.app in Identity Platform..."
+ACCESS_TOKEN=$(gcloud auth print-access-token --quiet)
+HOSTING_DOMAIN="${FIREBASE_SITE_ID}.web.app"
+
+CURRENT_DOMAINS=$(curl -s \
+  "https://identitytoolkit.googleapis.com/admin/v2/projects/${PROJECT_ID}/config" \
+  -H "Authorization: Bearer ${ACCESS_TOKEN}" | \
+  jq '[.authorizedDomains[]?]')
+
+UPDATED_DOMAINS=$(echo "${CURRENT_DOMAINS}" | \
+  jq --arg d "${HOSTING_DOMAIN}" '. + [$d] | unique')
+
+curl -s -X PATCH \
+  "https://identitytoolkit.googleapis.com/admin/v2/projects/${PROJECT_ID}/config?updateMask=authorizedDomains" \
+  -H "Authorization: Bearer ${ACCESS_TOKEN}" \
+  -H "Content-Type: application/json" \
+  -d "{\"authorizedDomains\": ${UPDATED_DOMAINS}}" > /dev/null
+
+echo "NOTE: ${HOSTING_DOMAIN} authorized."
+
+# ================================================================================
 # Post-Deploy Validation
 # ================================================================================
 
