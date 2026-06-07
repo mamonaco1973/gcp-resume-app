@@ -36,9 +36,6 @@ gcs       = storage.Client(project=PROJECT_ID)
 bucket    = gcs.bucket(MEDIA_BUCKET)
 topic_path = publisher.topic_path(PROJECT_ID, JOBS_TOPIC)
 
-# 90-day TTL — long enough that scored jobs remain available for reference
-TTL_SECONDS = 90 * 24 * 3600
-
 # Lifetime token cap applied per user — enforced at job submission time
 TOKEN_LIMIT_DEFAULT = 100_000
 
@@ -192,7 +189,6 @@ def _handle_create_resume(owner, body):
         "gcs_key":    gcs_key,
         "created_at": now,
         "updated_at": now,
-        "ttl":        now + TTL_SECONDS,
     })
     return _response(200, {"resume_id": resume_id, "name": name})
 
@@ -285,7 +281,6 @@ def _handle_create_folder(owner, body):
         "folder_id":  folder_id,
         "name":       name,
         "created_at": now,
-        "ttl":        now + TTL_SECONDS,
     })
     return _response(200, {"folder_id": folder_id, "name": name})
 
@@ -433,7 +428,6 @@ def _handle_create_job(owner, body):
         "status":       "submitted",
         "folder_id":    folder_id,
         "created_at":   now,
-        "ttl":          now + TTL_SECONDS,
     })
 
     publisher.publish(topic_path, json.dumps({
