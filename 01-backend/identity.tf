@@ -50,6 +50,10 @@ resource "google_identity_platform_default_supported_idp_config" "google_sign_in
   count    = (var.google_oauth_client_id != "" && var.google_oauth_client_secret != "") ? 1 : 0
   provider = google-beta
 
+  # Identity Platform must be initialized before any IDP config can exist.
+  # On a fresh project this resource races ahead and hits 404 without this.
+  depends_on = [google_identity_platform_config.default]
+
   enabled       = true
   idp_id        = "google.com"
   client_id     = var.google_oauth_client_id
