@@ -56,6 +56,11 @@ document.addEventListener("DOMContentLoaded", () => {
           return;
         }
       }
+      const emptyState = document.getElementById("empty-state");
+      if (emptyState) {
+        emptyState.classList.remove("hidden");
+        emptyState.innerHTML = "<p>Loading your jobs…</p>";
+      }
       try {
         restoreFilterState();
         await loadFolders();
