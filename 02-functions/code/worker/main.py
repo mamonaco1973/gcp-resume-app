@@ -196,6 +196,21 @@ def _increment_tokens(owner, tokens):
     )
 
 
+def _is_over_token_limit(owner):
+    """Return True if the user has exhausted their lifetime token allowance.
+
+    Re-checked at worker time because multiple jobs may have been queued
+    before the API submission check ran out of budget.
+    """
+    doc = db.collection("resume_app_users").document(owner).get()
+    if not doc.exists:
+        return False
+    d     = doc.to_dict()
+    used  = d.get("tokens_used", 0) or 0
+    limit = d.get("token_limit", 100_000)
+    return used >= limit
+
+
 # ================================================================================
 # Core Processing
 # ================================================================================
@@ -208,6 +223,17 @@ def _process_message(data):
     source_url  = data.get("source_url", "")
 
     logger.info("Processing job %s for owner %s", job_id, owner)
+
+    # Guard against batch over-runs — multiple jobs may have been queued
+    # before the API submission check saw the limit was approaching.
+    if _is_over_token_limit(owner):
+        logger.warning("Token limit exceeded for %s, skipping job %s", owner, job_id)
+        _update_job(owner, job_id, {
+            "status":        "Failed",
+            "error_message": "Token limit reached. This job was not scored.",
+        })
+        return
+
     _update_job(owner, job_id, {"status": "Scoring"})
 
     base = f"users/{owner}/jobs/{job_id}"
