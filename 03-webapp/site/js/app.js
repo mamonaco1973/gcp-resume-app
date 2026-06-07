@@ -219,11 +219,19 @@ function bindUiHandlers() {
     const submitBtn = document.getElementById("submit-new-job");
     if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = "Submitting..."; }
     newJobModal?.classList.add("modal-submitting");
+    let submitError = null;
     try {
       await submitJobScoringRequest();
+    } catch (err) {
+      submitError = err.message || "Submission failed. Please try again.";
     } finally {
       newJobModal?.classList.remove("modal-submitting");
       if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = "Submit"; }
+    }
+    if (submitError) {
+      const errEl = document.getElementById("new-job-submit-error");
+      if (errEl) { errEl.textContent = submitError; errEl.classList.remove("hidden"); }
+      return;
     }
     newJobModal?.classList.add("hidden");
     resetNewJobForm();
@@ -510,6 +518,8 @@ function resetNewJobForm() {
   document.getElementById("job-url").value = "";
   document.getElementById("job-description").value = "";
   document.getElementById("linkedin-job-ids").value = "";
+  const errEl = document.getElementById("new-job-submit-error");
+  if (errEl) { errEl.textContent = ""; errEl.classList.add("hidden"); }
   updateSourceFields();
 }
 
