@@ -102,9 +102,8 @@ envsubst < js/config.js.tmpl > js/config.js
 echo "NOTE: Deploying SPA to Firebase Hosting (site: ${FIREBASE_SITE_ID})..."
 cd "${SCRIPT_DIR}"
 export GOOGLE_APPLICATION_CREDENTIALS="${CREDENTIALS}"
-firebase deploy --only hosting \
+firebase deploy --only "hosting:${FIREBASE_SITE_ID}" \
   --project "${PROJECT_ID}" \
-  --site "${FIREBASE_SITE_ID}" \
   --non-interactive
 
 # ================================================================================
