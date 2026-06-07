@@ -1,4 +1,4 @@
-# GCP Serverless Resume Scoring Application
+# GCP Serverless Resume Scoring App
 
 This project delivers a fully automated **serverless resume scoring application**
 on GCP, built using **GCP API Gateway**, **Cloud Functions 2nd Gen**,
