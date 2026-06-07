@@ -16,7 +16,7 @@ CREDENTIALS="${SCRIPT_DIR}/credentials.json"
 echo "NOTE: Validating required commands in PATH."
 
 MISSING=0
-for CMD in gcloud terraform jq pip; do
+for CMD in gcloud terraform jq pip firebase; do
   if ! command -v "${CMD}" > /dev/null 2>&1; then
     echo "ERROR: ${CMD} not found in PATH."
     MISSING=1

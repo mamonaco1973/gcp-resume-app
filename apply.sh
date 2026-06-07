@@ -5,7 +5,9 @@
 #   1. Validate environment (tools, credentials, Vertex AI model access)
 #   2. Phase 1 — 01-backend: GCS, Pub/Sub, service accounts, Identity Platform
 #   3. Phase 2 — 02-functions: Cloud Functions + API Gateway
-#   4. Phase 3 — 03-webapp: GCS public bucket + frontend site
+#   4. Phase 3 — 03-webapp: GCS webapp bucket (infrastructure only)
+#   5. Phase 4 — 04-hosting: Firebase Hosting site + DNS CNAME + custom domain
+#   6. Generate config.js and deploy SPA via Firebase CLI
 # ================================================================================
 source "$(dirname "$0")/gemini-config.sh"
 set -euo pipefail
@@ -62,7 +64,7 @@ terraform apply -auto-approve \
 export GATEWAY_URL=$(terraform output -raw gateway_url)
 
 # ================================================================================
-# Phase 3 — Webapp bucket
+# Phase 3 — Webapp bucket (infrastructure only — no file upload)
 # ================================================================================
 
 echo "NOTE: Deploying 03-webapp..."
@@ -70,7 +72,17 @@ cd "${SCRIPT_DIR}/03-webapp"
 terraform init -reconfigure -input=false
 terraform apply -auto-approve
 
-export WEBAPP_BUCKET=$(terraform output -raw webapp_bucket)
+# ================================================================================
+# Phase 4 — Firebase Hosting + DNS custom domain
+# ================================================================================
+
+echo "NOTE: Deploying 04-hosting..."
+cd "${SCRIPT_DIR}/04-hosting"
+terraform init -reconfigure -input=false
+terraform apply -auto-approve
+
+export FIREBASE_SITE_ID=$(terraform output -raw firebase_site_id)
+export HOSTING_URL=$(terraform output -raw hosting_url)
 
 # ================================================================================
 # Generate Frontend Config
@@ -83,12 +95,17 @@ export API_BASE_URL="${GATEWAY_URL}"
 envsubst < js/config.js.tmpl > js/config.js
 
 # ================================================================================
-# Upload Site Files
+# Deploy SPA via Firebase CLI
+# Firebase CLI uses ADC from the gcloud auth activated in check_env.sh.
 # ================================================================================
 
-echo "NOTE: Uploading site files to gs://${WEBAPP_BUCKET}..."
-gcloud storage cp -r . "gs://${WEBAPP_BUCKET}/" --quiet
-gcloud storage rm "gs://${WEBAPP_BUCKET}/js/config.js.tmpl" --quiet 2>/dev/null || true
+echo "NOTE: Deploying SPA to Firebase Hosting (site: ${FIREBASE_SITE_ID})..."
+cd "${SCRIPT_DIR}"
+export GOOGLE_APPLICATION_CREDENTIALS="${CREDENTIALS}"
+firebase deploy --only hosting \
+  --project "${PROJECT_ID}" \
+  --site "${FIREBASE_SITE_ID}" \
+  --non-interactive
 
 # ================================================================================
 # Post-Deploy Validation

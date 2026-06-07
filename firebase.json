@@ -1,0 +1,17 @@
+{
+  "hosting": {
+    "public": "03-webapp/site",
+    "ignore": [
+      "firebase.json",
+      "**/.*",
+      "**/node_modules/**",
+      "js/config.js.tmpl"
+    ],
+    "rewrites": [
+      {
+        "source": "**",
+        "destination": "/index.html"
+      }
+    ]
+  }
+}

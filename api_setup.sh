@@ -41,6 +41,8 @@ gcloud services enable \
   pubsub.googleapis.com \
   iam.googleapis.com \
   iamcredentials.googleapis.com \
+  firebase.googleapis.com \
+  firebasehosting.googleapis.com \
   --project="${PROJECT_ID}" --quiet
 
 echo "NOTE: APIs enabled."

@@ -20,6 +20,15 @@ gcloud auth activate-service-account --key-file="${CREDENTIALS}" --quiet
 gcloud config set project "${PROJECT_ID}" --quiet
 
 # ================================================================================
+# Phase 4 — Firebase Hosting + DNS (destroy before webapp bucket)
+# ================================================================================
+
+echo "NOTE: Destroying 04-hosting..."
+cd "${SCRIPT_DIR}/04-hosting"
+terraform init -reconfigure -input=false
+terraform destroy -auto-approve 2>/dev/null || true
+
+# ================================================================================
 # Phase 3 — Webapp bucket
 # ================================================================================
 
