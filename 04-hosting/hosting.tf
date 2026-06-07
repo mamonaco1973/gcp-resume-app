@@ -4,9 +4,8 @@
 # HTTPS. No custom domain needed for a portfolio demo.
 # ================================================================================
 
-locals {
-  # Deterministic site ID scoped to this project — globally unique in Firebase.
-  site_id = "myjobs-${local.project_id}"
+variable "site_id" {
+  default = "myjobs-resume-app"
 }
 
 # ================================================================================
@@ -16,7 +15,7 @@ locals {
 resource "google_firebase_hosting_site" "myjobs" {
   provider = google-beta
   project  = local.project_id
-  site_id  = local.site_id
+  site_id  = var.site_id
 }
 
 # ================================================================================
