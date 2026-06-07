@@ -9,6 +9,10 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 CREDENTIALS="${SCRIPT_DIR}/credentials.json"
 
+# Required for GCS Terraform backend — providers use credentials.json directly
+# but the backend init uses ADC.
+export GOOGLE_APPLICATION_CREDENTIALS="${CREDENTIALS}"
+
 PROJECT_ID=$(jq -r '.project_id' "${CREDENTIALS}")
 SA_EMAIL=$(jq -r '.client_email' "${CREDENTIALS}")
 
