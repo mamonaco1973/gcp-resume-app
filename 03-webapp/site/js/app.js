@@ -553,6 +553,7 @@ function validateNewJobForm() {
   if (sourceType === "linkedin_job_id") {
     const ids = parseLinkedInJobIds(linkedinRaw);
     if (!ids.length)                    errors.linkedinJobIds = "Enter at least one LinkedIn job ID.";
+    else if (ids.length > 10)           errors.linkedinJobIds = "You can submit at most 10 LinkedIn job IDs at once.";
     else if (!ids.every(isValidLinkedInJobId)) errors.linkedinJobIds = "Each LinkedIn Job ID must be numeric and 7 to 12 digits long.";
   }
   return { isValid: Object.keys(errors).length === 0, errors };
