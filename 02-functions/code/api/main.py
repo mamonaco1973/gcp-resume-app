@@ -373,6 +373,16 @@ def _handle_create_job(owner, body):
     if source_type == "raw_text" and not raw_text:
         return _response(400, {"error": "job_description required for raw_text source_type"})
 
+    # Reject if user has hit the lifetime job cap
+    job_count = (
+        db.collection("resume_app_jobs")
+        .where("owner", "==", owner)
+        .count()
+        .get()[0][0].value
+    )
+    if job_count >= 1000:
+        return _response(429, {"error": "Job limit reached. Maximum 1,000 scored jobs per account."})
+
     # Reject submission if user has exhausted their lifetime token allowance
     if not _check_token_limit(owner):
         return _response(429, {
