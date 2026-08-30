@@ -66,7 +66,9 @@ echo "NOTE: Running api_setup.sh (enables APIs, Firestore, Identity Platform)...
 # ================================================================================
 
 source "${SCRIPT_DIR}/gemini-config.sh"
-GEMINI_MODEL_ID="${GEMINI_MODEL_ID:-gemini-2.5-flash}"
+# Fallback only -- gemini-config.sh above normally sets this. Kept in step
+# with it so an unsourced run does not silently test a retired model.
+GEMINI_MODEL_ID="${GEMINI_MODEL_ID:-gemini-3.1-flash-lite}"
 echo "NOTE: Testing Vertex AI model ${GEMINI_MODEL_ID}..."
 
 ACCESS_TOKEN=$(gcloud auth print-access-token --quiet)

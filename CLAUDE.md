@@ -98,8 +98,8 @@ complications.
 ### Key Terraform Variables (`02-functions/main.tf`)
 
 -   `media_bucket_name` --- passed from 01-backend output
--   `gemini_model_id` --- passed from `gemini-config.sh` (default
-    `gemini-2.0-flash-001`)
+-   `gemini_model_id` --- passed from `gemini-config.sh` (currently
+    `gemini-3.1-flash-lite`)
 
 ### Authentication
 
@@ -119,13 +119,23 @@ deploy time to produce `config.js`. Never edit `config.js` directly.
 Edit the single `export` line in `gemini-config.sh`:
 
 ```bash
-export GEMINI_MODEL_ID="gemini-2.0-flash-001"
+export GEMINI_MODEL_ID="gemini-3.1-flash-lite"
 ```
 
 This flows to `check_env.sh` (pre-flight probe), the worker CF2
 `GEMINI_MODEL_ID` env var via Terraform, and `code/worker/main.py` at
 runtime. If the new model has a different response schema, also update
 the prompt strings in `02-functions/code/worker/main.py`.
+
+Before changing it, see what the project can actually reach:
+
+```bash
+./probe_vertex.py                 # every Gemini model, timed
+./probe_vertex.py --tokens 800    # closer to real generation length
+```
+
+A model can be valid, documented and still 404 for a given project and
+location. The probe calls it rather than trusting the catalog.
 
 ## Code Commenting Standards
 

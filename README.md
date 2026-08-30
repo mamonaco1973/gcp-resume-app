@@ -112,7 +112,7 @@ NOTE: jq is found in the current PATH.
 NOTE: pip is found in the current PATH.
 NOTE: credentials.json found. Project: my-project-id
 NOTE: Activated service account: resume-deployer@my-project-id.iam.gserviceaccount.com
-NOTE: Checking Vertex AI Gemini model gemini-2.0-flash-001...
+NOTE: Testing Vertex AI model gemini-3.1-flash-lite...
 NOTE: Vertex AI Gemini access confirmed.
 ...
 =================================================================================
@@ -622,7 +622,14 @@ The model is parameterized end-to-end. To retarget, edit the `export` line in
 `check_env.sh`:
 
 ```bash
-export GEMINI_MODEL_ID="gemini-2.0-flash-001"
+export GEMINI_MODEL_ID="gemini-3.1-flash-lite"
+```
+
+To see what your project can actually reach before picking one:
+
+```bash
+./probe_vertex.py                 # every Gemini model, timed, with token counts
+./probe_vertex.py --tokens 800    # closer to the length the worker generates
 ```
 
 This value flows automatically to:
