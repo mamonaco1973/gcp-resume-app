@@ -49,11 +49,38 @@ echo "NOTE: APIs enabled."
 # Identity Platform — Enable Email/Password Sign-In
 # ================================================================================
 
-echo "NOTE: Enabling Identity Platform email/password sign-in..."
-
 ACCESS_TOKEN=$(gcloud auth print-access-token --quiet)
 
-curl -s -X PATCH \
+# --------------------------------------------------------------------------------
+# Provision Identity Platform before configuring it
+# The config is a singleton that must be PROVISIONED first — UpdateConfig (the
+# PATCH below) returns 404 CONFIGURATION_NOT_FOUND on a project where Identity
+# Platform was never turned on. initializeAuth creates it and is idempotent
+# (409 == already exists), so a fresh project deploys unattended.
+# NOTE: do NOT `gcloud services enable identityplatform.googleapis.com` — it is a
+# Marketplace product a service account cannot bind, and it fails the whole
+# enable batch. initializeAuth on the identitytoolkit endpoint is the way in.
+# --------------------------------------------------------------------------------
+echo "NOTE: Initializing Identity Platform (idempotent)..."
+INIT_CODE=$(curl -sS -o /dev/null -w '%{http_code}' -X POST \
+  "https://identitytoolkit.googleapis.com/v2/projects/${PROJECT_ID}/identityPlatform:initializeAuth" \
+  -H "Authorization: Bearer ${ACCESS_TOKEN}" \
+  -H "X-Goog-User-Project: ${PROJECT_ID}" \
+  -H "Content-Type: application/json" \
+  -d '{}')
+case "${INIT_CODE}" in
+  2*)  echo "NOTE: Identity Platform initialized." ;;
+  409) echo "NOTE: Identity Platform already initialized." ;;
+  *)   echo "WARN: initializeAuth returned HTTP ${INIT_CODE} — continuing." ;;
+esac
+
+# --------------------------------------------------------------------------------
+# Enable email/password sign-in
+# Surface HTTP errors instead of a false success: the old `curl -s ... >/dev/null`
+# swallowed a 404 and still printed "enabled", leaving auth silently broken.
+# --------------------------------------------------------------------------------
+echo "NOTE: Enabling Identity Platform email/password sign-in..."
+SIGNIN_RESP=$(curl -sS -w $'\n%{http_code}' -X PATCH \
   "https://identitytoolkit.googleapis.com/admin/v2/projects/${PROJECT_ID}/config?updateMask=signIn" \
   -H "Authorization: Bearer ${ACCESS_TOKEN}" \
   -H "Content-Type: application/json" \
@@ -61,7 +88,14 @@ curl -s -X PATCH \
     "signIn": {
       "email": { "enabled": true, "passwordRequired": true }
     }
-  }' > /dev/null
+  }')
+SIGNIN_CODE=$(printf '%s' "${SIGNIN_RESP}" | tail -n1)
+SIGNIN_BODY=$(printf '%s' "${SIGNIN_RESP}" | sed '$d')
+if [ "${SIGNIN_CODE}" -ge 400 ]; then
+  echo "ERROR: Identity Platform config PATCH failed (HTTP ${SIGNIN_CODE}):"
+  echo "${SIGNIN_BODY}"
+  exit 1
+fi
 
 echo "NOTE: Identity Platform email/password sign-in enabled."
 
