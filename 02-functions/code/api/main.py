@@ -40,7 +40,7 @@ topic_path = publisher.topic_path(PROJECT_ID, JOBS_TOPIC)
 TTL_SECONDS = 90 * 24 * 3600
 
 # Lifetime token cap applied per user — enforced at job submission time
-TOKEN_LIMIT_DEFAULT = 100_000
+TOKEN_LIMIT_DEFAULT = 500_000
 
 # Hard cap on attachment size — documents rarely exceed this
 MAX_ATTACHMENT_BYTES = 10 * 1024 * 1024  # 10 MB

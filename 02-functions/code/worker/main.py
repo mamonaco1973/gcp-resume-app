@@ -18,7 +18,9 @@ import base64
 import json
 import logging
 import os
+import socket
 import time
+import urllib.error
 import urllib.request
 
 import functions_framework
@@ -139,11 +141,71 @@ Resume:
 # Helpers
 # ================================================================================
 
+# Job boards rate-limit by source IP, and Cloud Run fans this function out
+# across instances that all egress from Google ranges.  Three jobs submitted
+# together produced simultaneous fetches of the same posting and LinkedIn
+# answered 429 (2026-08-30).  Retrying here keeps a transient limit inside one
+# invocation: the alternative is raising, which makes Pub/Sub redeliver and
+# re-run the whole job -- including both Gemini calls for a job that only
+# failed on the fetch.
+FETCH_ATTEMPTS = 4
+FETCH_BACKOFF  = 2          # seconds; doubles each attempt (2, 4, 8)
+
+# 429 and 5xx are worth waiting out.  A 404 or 403 will not improve with time,
+# so those fail immediately rather than burning 30s to reach the same answer.
+RETRYABLE_STATUS = {429, 500, 502, 503, 504}
+
+
+def is_transient(exc):
+    """Return True when retrying exc has a realistic chance of succeeding.
+
+    Args:
+        exc: The exception raised while processing a job.
+
+    Returns:
+        bool: True for rate limits, server errors and network timeouts.
+    """
+    if isinstance(exc, urllib.error.HTTPError):
+        return exc.code in RETRYABLE_STATUS
+    if isinstance(exc, (urllib.error.URLError, TimeoutError, socket.timeout)):
+        return True
+    # Vertex surfaces throttling as a google.api_core error whose text leads
+    # with the status code; match on that rather than importing the class.
+    return "429" in str(exc) or "503" in str(exc)
+
+
 def _fetch_url(url):
-    """Fetch a URL and return visible text with scripts/styles stripped."""
-    req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
-    with urllib.request.urlopen(req, timeout=30) as resp:
-        html = resp.read().decode("utf-8", errors="replace")
+    """Fetch a URL and return visible text with scripts/styles stripped.
+
+    Args:
+        url: The job posting URL to retrieve.
+
+    Returns:
+        str: Visible page text, truncated to 50k characters.
+
+    Raises:
+        urllib.error.HTTPError: On a non-retryable status, or once the
+            retryable attempts are exhausted.
+    """
+    req  = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
+    html = None
+
+    for attempt in range(FETCH_ATTEMPTS):
+        try:
+            with urllib.request.urlopen(req, timeout=30) as resp:
+                html = resp.read().decode("utf-8", errors="replace")
+            break
+        except urllib.error.HTTPError as exc:
+            last = attempt == FETCH_ATTEMPTS - 1
+            if exc.code not in RETRYABLE_STATUS or last:
+                raise
+            wait = FETCH_BACKOFF * (2 ** attempt)
+            logger.warning(
+                "Fetch of %s returned %s — retrying in %ss (%d/%d)",
+                url, exc.code, wait, attempt + 1, FETCH_ATTEMPTS,
+            )
+            time.sleep(wait)
+
     soup = BeautifulSoup(html, "html.parser")
     for tag in soup(["script", "style"]):
         tag.decompose()
@@ -326,5 +388,17 @@ def resume_worker(cloud_event):
             })
         except Exception:
             pass
-        # Re-raise so Pub/Sub retries on transient failures (rate limits, timeouts)
-        raise
+
+        # Only re-raise what a retry could actually fix.  The trigger is set to
+        # RETRY_POLICY_RETRY, so raising here makes Pub/Sub redeliver -- and
+        # raising unconditionally meant a permanently bad URL was retried until
+        # the message aged out, while a rate-limited fetch generated a burst of
+        # redeliveries that sustained the very limit that caused it.  Anything
+        # non-transient is recorded as Failed and acked by returning normally.
+        if is_transient(exc):
+            raise
+
+        logger.error(
+            "Job %s failed permanently (%s) — not retrying",
+            job_id, type(exc).__name__,
+        )

@@ -691,7 +691,7 @@ async function updateTokenUsage() {
   try {
     const data      = await getUsage();
     const used      = data.tokens_used || 0;
-    const limit     = data.token_limit || 100_000;
+    const limit     = data.token_limit || 500_000;
     const remaining = Math.max(0, limit - used);
     const usedPct   = Math.min(100, (used / limit) * 100);
     const leftPct   = 100 - usedPct;
