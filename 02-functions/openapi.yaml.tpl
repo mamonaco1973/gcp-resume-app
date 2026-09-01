@@ -44,6 +44,22 @@ paths:
         "200":
           description: OK
 
+  /heartbeat:
+    options:
+      operationId: corsHeartbeat
+      parameters: []
+      responses:
+        "204":
+          description: CORS preflight
+    get:
+      operationId: heartbeat
+      security:
+        - firebase: []
+      parameters: []
+      responses:
+        "200":
+          description: OK
+
   /usage:
     options:
       operationId: corsUsage

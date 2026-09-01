@@ -2,12 +2,14 @@
 /* api.js                                                                      */
 /* HTTP client for the Resume Scorer backend API.                              */
 /* Attaches a fresh Firebase ID token as a Bearer header on every request.   */
-/* On 401, redirects to index.html — Firebase auto-refreshes tokens so a     */
-/* 401 means the session has genuinely ended.                                 */
+/* On 401 the session has genuinely ended, so sign out once and hand the     */
+/* user back to sign-in. Redirecting unconditionally to index.html looped:   */
+/* the dashboard IS index.html, so it reloaded, restored the session from    */
+/* local persistence, re-called the API, and 401'd again forever.            */
 /* ========================================================================== */
 
 import { CONFIG }     from "./config.js";
-import { getIdToken } from "./auth.js";
+import { getIdToken, signOut } from "./auth.js";
 
 const API_BASE_URL = CONFIG.API_BASE_URL;
 
@@ -23,6 +25,37 @@ async function buildHeaders() {
   };
 }
 
+// -----------------------------------------------------------------------------
+// Session termination
+// -----------------------------------------------------------------------------
+// Several requests are usually in flight at once, so every one of them sees the
+// 401. The guard makes sign-out and navigation happen once instead of N times.
+// On the dashboard we do not navigate at all: signOut() fires onAuthChange,
+// which already shows the auth modal. Navigating there is what created the
+// reload loop, since index.html is the page doing the redirecting.
+
+let sessionEnded = false;
+
+function onDashboard() {
+  const path = window.location.pathname;
+  return path.endsWith("/") || path.endsWith("/index.html");
+}
+
+async function endSession() {
+  if (sessionEnded) return;
+  sessionEnded = true;
+
+  try {
+    await signOut();
+  } catch (error) {
+    console.error("Sign-out after 401 failed:", error);
+  }
+
+  if (!onDashboard()) {
+    window.location.href = "index.html";
+  }
+}
+
 async function apiRequest(path, options = {}) {
   const headers  = await buildHeaders();
   const response = await fetch(`${API_BASE_URL}${path}`, {
@@ -30,11 +63,14 @@ async function apiRequest(path, options = {}) {
     headers,
   });
 
-  // Firebase auto-refreshes tokens, so 401 means the session has expired
   if (response.status === 401) {
-    window.location.href = "index.html";
-    return;
+    await endSession();
+    throw new Error("Your session has expired. Please sign in again.");
   }
+
+  // Re-arm the guard: signing back in via the modal does not reload the page,
+  // and a latched flag would stop the next expiry from signing out.
+  sessionEnded = false;
 
   let data = null;
   try {
@@ -49,6 +85,27 @@ async function apiRequest(path, options = {}) {
   }
 
   return data;
+}
+
+// -----------------------------------------------------------------------------
+// Keep-alive
+// -----------------------------------------------------------------------------
+// Deliberately bypasses apiRequest. That helper ends the session and throws on
+// a 401, which is right for a user action and wrong for a background timer: an
+// expired token would sign the user out from a tick they never asked for.
+// Every failure is swallowed instead — a missed ping just means the next real
+// request pays a cold start.
+export async function heartbeat() {
+  try {
+    const token = await getIdToken();
+    if (!token) return;
+    await fetch(`${API_BASE_URL}/heartbeat`, {
+      method:  "GET",
+      headers: { Authorization: `Bearer ${token}` },
+    });
+  } catch (_) {
+    /* Intentionally ignored — best-effort warmth, never user-visible. */
+  }
 }
 
 // -----------------------------------------------------------------------------

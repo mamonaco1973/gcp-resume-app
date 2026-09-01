@@ -657,6 +657,14 @@ def resume_api(request):
     if request.method == "OPTIONS":
         return ("", 204, _cors_headers())
 
+    # Keep-alive ping. The cheapest possible handler: no Firestore, no GCS,
+    # and no identity lookup. Its only job is to be an invocation, so Cloud
+    # Run keeps this container resident between real requests. Answered
+    # before _get_owner because the gateway has already validated the JWT,
+    # and a warm-up ping should never be the thing that 401s a user.
+    if request.path.rstrip("/").endswith("/heartbeat"):
+        return _response(200, {"status": "ok"})
+
     owner = _get_owner(request)
     if not owner:
         return _response(401, {"error": "unauthorized"})

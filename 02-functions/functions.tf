@@ -56,7 +56,7 @@ resource "google_cloudfunctions2_function" "worker" {
     min_instance_count    = 0
     max_instance_count    = 5
     available_memory      = "512M"
-    timeout_seconds       = 300
+    timeout_seconds       = 540 # gen2 event-driven max; ack deadline must track it
     service_account_email = data.google_service_account.worker_sa.email
 
     environment_variables = {

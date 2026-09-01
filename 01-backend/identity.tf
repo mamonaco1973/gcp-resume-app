@@ -1,6 +1,6 @@
 # ================================================================================
 # 01-backend/identity.tf
-# Browser-safe API key scoped to Identity Platform only.
+# Browser-safe API key scoped to Identity Platform sign-in + token refresh.
 # Used by the SPA to initialise Firebase Auth without exposing project credentials.
 # ================================================================================
 
@@ -10,9 +10,19 @@ resource "google_apikeys_key" "webapp_key" {
   name         = "resume-webapp-key-${random_id.suffix.hex}"
   display_name = "Resume App Browser Key"
 
+  # Firebase Auth needs BOTH services from the browser, not just one:
+  #   identitytoolkit — sign-in, sign-up, password reset
+  #   securetoken     — exchanging the refresh token for a new ID token
+  # ID tokens last exactly 3600s, so a key missing securetoken works perfectly
+  # for an hour and then every call fails with "requests to this api ...
+  # securetoken.v1.securetoken.granttoken are blocked".
   restrictions {
     api_targets {
       service = "identitytoolkit.googleapis.com"
+    }
+
+    api_targets {
+      service = "securetoken.googleapis.com"
     }
   }
 }

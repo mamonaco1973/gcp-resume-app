@@ -148,8 +148,11 @@ Resume:
 # invocation: the alternative is raising, which makes Pub/Sub redeliver and
 # re-run the whole job -- including both Gemini calls for a job that only
 # failed on the fetch.
+# Half the delay _call_gemini uses (10/20/40): a web fetch that is going to
+# recover does so sooner than a model quota window resets, and a long sleep
+# here just holds the instance open against Pub/Sub's ack deadline.
 FETCH_ATTEMPTS = 4
-FETCH_BACKOFF  = 2          # seconds; doubles each attempt (2, 4, 8)
+FETCH_BACKOFF  = 5          # seconds; doubles each attempt (5, 10, 20)
 
 # 429 and 5xx are worth waiting out.  A 404 or 403 will not improve with time,
 # so those fail immediately rather than burning 30s to reach the same answer.

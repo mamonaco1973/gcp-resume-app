@@ -33,6 +33,7 @@ gcloud services enable \
   eventarc.googleapis.com \
   artifactregistry.googleapis.com \
   identitytoolkit.googleapis.com \
+  securetoken.googleapis.com \
   apigateway.googleapis.com \
   servicemanagement.googleapis.com \
   servicecontrol.googleapis.com \
